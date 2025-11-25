@@ -19,7 +19,7 @@
     "All","United States","United Kingdom","Korea","Japan","Bangladesh","China",
     "Egypt","France","Germany","India","Indonesia","Iraq","Italy","Ivory Coast",
     "Kenya","Lebanon","Mexico","Morocco","Nigeria","Pakistan","Philippines",
-    "Russia","Saudi Arabia","South Africa","Spain","Syria","Thailand","Turkey","Other"
+    "Russia","South Africa","Spain","Thailand","Turkey","Other"
   ];
   const YEAR_OPTIONS = [
     "All","2025","2024","2023","2022","2021","2020",
@@ -44,10 +44,10 @@
     sort: "ForYou"
   };
 
-  // simple in-memory caches for speed
+  // in-memory caches for speed
   let homeCache = null;       // { trending, movies, shows }
   const searchCache = {};     // q -> list
-  const detailCache = {};     // id -> { info, episodes, cover, rec, score, votes, votesText }
+  const detailCache = {};     // id -> {...}
 
   /* ===================== DYNAMIC SEO ENGINE ===================== */
   function updateSEO(config){
@@ -249,7 +249,7 @@
             <div class="header-logo">
               <div class="logo-burger">☰</div>
               <div class="logo-icon">BM</div>
-              <div class="logo-text">Blackmemovie</div>
+              <div class="logo-text">BlackMeMovie</div>
             </div>
             <div class="header-search">
               <div class="search-box">
@@ -279,7 +279,7 @@
           </div>
 
           <div class="footer">
-            Blackmemovie • MovieBox Clone • LokLok iframe mode
+            BlackMeMovie © 2025
           </div>
         </div>
       </div>
@@ -299,6 +299,14 @@
       navDropdown.addEventListener("change",()=>{
         const v = navDropdown.value;
         if(v) location.hash = v;
+      });
+    }
+
+    // mobile burger - simple toggle class on body
+    const burger = root.querySelector(".logo-burger");
+    if(burger){
+      burger.addEventListener("click", ()=>{
+        document.body.classList.toggle("mb-sidebar-open");
       });
     }
 
@@ -382,7 +390,6 @@
       url: location.href
     });
 
-    // use cache if available
     if(homeCache){
       currentTrending = homeCache.trending || [];
       currentHeroIndex = 0;
@@ -560,7 +567,6 @@
       url: location.href
     });
 
-    // small schema for category
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"CollectionPage",
@@ -870,7 +876,7 @@
           <h2 style="margin-top:24px;">Similar</h2>
           <div class="grid">
             ${
-              (c.rec||[]).map(m=>{
+              (rec||[]).map(m=>{
                 const cc=m.cover && m.cover.url?m.cover.url:"";
                 return `
                   <a href="#/detail/${m.subjectId}">
@@ -1009,7 +1015,7 @@
       mbPage.innerHTML = `
         <h1>Watch history</h1>
         <p style="color:#aaa;font-size:13px;margin-top:6px;">
-          No history yet. Start watching something on Blackmemovie.
+          No history yet. Start watching something on BlackMeMovie.
         </p>
       `;
       return;
