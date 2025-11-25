@@ -2,6 +2,59 @@ body{background:#050509;color:#fff;margin:0;font-family:Arial,Helvetica,sans-ser
 a{text-decoration:none;color:inherit}
 #moviebox-app *{box-sizing:border-box;pointer-events:auto!important}
 
+/* Remove Blogger header / navbar / padding */
+header, 
+.Header, 
+#Header1, 
+.header-outer, 
+.header-inner, 
+#blog-header,
+.blog-header,
+.top-bar,
+.masthead,
+.site-header,
+#navbar,
+#navbar-iframe,
+.navbar,
+.navbar-container,
+#Attribution1,
+#PageHeader1,
+#header-wrapper,
+#main-header {
+    display:none!important;
+    height:0!important;
+    opacity:0!important;
+    margin:0!important;
+    padding:0!important;
+    visibility:hidden!important;
+}
+
+/* Reset body/padding */
+html, body {
+    margin:0!important;
+    padding:0!important;
+    background:#050509!important;
+}
+
+/* DROPDOWN MENU */
+.mb-dropdown {
+  width: 100%;
+  background: #0d0d12;
+  color: #fff;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #222;
+  font-size: 15px;
+  margin-bottom: 10px;
+  outline: none;
+}
+
+.mb-dropdown option {
+  background: #0d0d12;
+  color: #fff;
+}
+
+
 /* SHELL LAYOUT */
 #moviebox-app .mb-shell{
   display:flex;
