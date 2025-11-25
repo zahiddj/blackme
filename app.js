@@ -44,6 +44,11 @@
     sort: "ForYou"
   };
 
+  // simple in-memory caches for speed
+  let homeCache = null;       // { trending, movies, shows }
+  const searchCache = {};     // q -> list
+  const detailCache = {};     // id -> { info, episodes, cover, rec, score, votes, votesText }
+
   /* ===================== DYNAMIC SEO ENGINE ===================== */
   function updateSEO(config){
     config = config || {};
@@ -52,7 +57,6 @@
     const image = config.image || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg";
     const url = config.url || location.href;
 
-    // Title
     document.title = title;
 
     // Meta description
@@ -135,6 +139,20 @@
       document.head.appendChild(canon);
     }
     canon.href = url;
+  }
+
+  // JSON-LD schema helper
+  function setJSONLD(obj){
+    try{
+      let el = document.getElementById("bm-schema");
+      if(!el){
+        el = document.createElement("script");
+        el.id = "bm-schema";
+        el.type = "application/ld+json";
+        document.head.appendChild(el);
+      }
+      el.textContent = JSON.stringify(obj);
+    }catch(e){}
   }
   /* ============================================================= */
 
@@ -246,6 +264,17 @@
           </div>
 
           <div class="container">
+            <!-- DROPDOWN MENU NAV -->
+            <select class="mb-dropdown" id="mb-nav-dropdown">
+              <option value="#/home">🏠 Home</option>
+              <option value="#/category/TV">📺 TV show</option>
+              <option value="#/category/Movie">🎬 Movie</option>
+              <option value="#/category/Animation">🐻 Animation</option>
+              <option value="#/category/Sport">🎮 Sport Live</option>
+              <option value="#/category/Novel">📖 Novel 🔥</option>
+              <option value="#/category/MostWatched">📊 Most Watched</option>
+            </select>
+
             <div id="mb-page"></div>
           </div>
 
@@ -264,7 +293,16 @@
       });
     });
 
-    // search – REAL POST /subject/search
+    // dropdown routing
+    const navDropdown = document.getElementById("mb-nav-dropdown");
+    if(navDropdown){
+      navDropdown.addEventListener("change",()=>{
+        const v = navDropdown.value;
+        if(v) location.hash = v;
+      });
+    }
+
+    // search
     const sInput = document.getElementById("mb-search-input");
     const sIcon = document.getElementById("mb-search-icon");
     const triggerSearch = ()=>{
@@ -299,9 +337,41 @@
       if(el.getAttribute("data-route")===route) el.classList.add("active");
       else el.classList.remove("active");
     });
+
+    const navDropdown = document.getElementById("mb-nav-dropdown");
+    if(navDropdown){
+      if(route){
+        navDropdown.value = route;
+      }else{
+        navDropdown.value = "#/home";
+      }
+    }
   }
 
   /* HOME PAGE */
+  function buildHomeSchema(trending, movies, shows){
+    const urlBase = location.origin + location.pathname;
+    const sample = (trending && trending[0]) || (movies && movies[0]) || (shows && shows[0]);
+    const schema = {
+      "@context":"https://schema.org",
+      "@type":"WebSite",
+      "name":"BlackMeMovie",
+      "url":urlBase,
+      "potentialAction":{
+        "@type":"SearchAction",
+        "target":urlBase + "#/search/{search_term_string}",
+        "query-input":"required name=search_term_string"
+      }
+    };
+    if(sample){
+      schema.about = {
+        "@type":"Movie",
+        "name": getTitle(sample)
+      };
+    }
+    setJSONLD(schema);
+  }
+
   function pageHome(){
     highlightNav("#/home");
 
@@ -311,6 +381,15 @@
       image: "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
       url: location.href
     });
+
+    // use cache if available
+    if(homeCache){
+      currentTrending = homeCache.trending || [];
+      currentHeroIndex = 0;
+      buildHomeSchema(homeCache.trending, homeCache.movies, homeCache.shows);
+      renderHome(homeCache.movies, homeCache.shows);
+      return;
+    }
 
     setLoading();
 
@@ -327,6 +406,14 @@
           tabId:2,classify:"TV",genre:"All",year:"All",sort:"ForYou",page:1,perPage:18
         },showRes=>{
           const shows = pickItems(showRes);
+
+          homeCache = {
+            trending: currentTrending.slice(),
+            movies: movies.slice(),
+            shows: shows.slice()
+          };
+
+          buildHomeSchema(homeCache.trending, homeCache.movies, homeCache.shows);
           renderHome(movies,shows);
         });
       });
@@ -473,6 +560,14 @@
       url: location.href
     });
 
+    // small schema for category
+    setJSONLD({
+      "@context":"https://schema.org",
+      "@type":"CollectionPage",
+      "name": typeParam+" – BlackMeMovie",
+      "url": location.href
+    });
+
     const classify = mapTypeToClassify(typeParam);
     categoryState.type = classify;
     categoryState.genre="All";
@@ -576,6 +671,27 @@
   }
 
   /* SEARCH PAGE – REAL POST /subject/search */
+  function renderSearchPage(q, list){
+    mbPage.innerHTML = `
+      <h1>Search: ${esc(q)}</h1>
+      <div class="grid">
+        ${
+          list.map(m=>{
+            const c = m.cover && m.cover.url ? m.cover.url : "";
+            return `
+              <a href="#/detail/${m.subjectId}">
+                <div class="card">
+                  <img src="${c}">
+                  <div class="card-title">${getTitle(m)}</div>
+                </div>
+              </a>
+            `;
+          }).join("") || "<p style='color:#aaa;margin-top:10px'>No results found.</p>"
+        }
+      </div>
+    `;
+  }
+
   function pageSearch(q){
     highlightNav("");
     setLoading();
@@ -587,6 +703,19 @@
       url: location.href
     });
 
+    setJSONLD({
+      "@context":"https://schema.org",
+      "@type":"SearchResultsPage",
+      "name":"Search: "+q,
+      "url":location.href,
+      "query":q
+    });
+
+    if(searchCache[q]){
+      renderSearchPage(q, searchCache[q]);
+      return;
+    }
+
     const payload = { keyword:q, page:1, perPage:PER_PAGE };
 
     fetch(API + "/wefeed-h5-bff/web/subject/search", {
@@ -597,24 +726,8 @@
     .then(r=>r.json())
     .then(resp=>{
       const list = pickItems(resp);
-      mbPage.innerHTML = `
-        <h1>Search: ${esc(q)}</h1>
-        <div class="grid">
-          ${
-            list.map(m=>{
-              const c = m.cover && m.cover.url ? m.cover.url : "";
-              return `
-                <a href="#/detail/${m.subjectId}">
-                  <div class="card">
-                    <img src="${c}">
-                    <div class="card-title">${getTitle(m)}</div>
-                  </div>
-                </a>
-              `;
-            }).join("") || "<p style='color:#aaa;margin-top:10px'>No results found.</p>"
-          }
-        </div>
-      `;
+      searchCache[q] = list.slice();
+      renderSearchPage(q, list);
     })
     .catch(()=>{
       mbPage.innerHTML = `<p style="color:#aaa">Search failed.</p>`;
@@ -622,11 +735,40 @@
   }
 
   /* DETAIL PAGE – MovieBox-like layout */
+  function buildDetailSchema(info, cover){
+    const typeStr = (info.classify || info.typeName || info.subjectType || "").toLowerCase();
+    const isSeries = typeStr.indexOf("tv")!==-1 || typeStr.indexOf("series")!==-1 || typeStr.indexOf("show")!==-1;
+    const schema = {
+      "@context":"https://schema.org",
+      "@type": isSeries ? "TVSeries" : "Movie",
+      "name": getTitle(info),
+      "image": cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      "description": info.description || "",
+      "datePublished": info.releaseDate || info.year || "",
+      "genre": info.genre || (Array.isArray(info.genres)?info.genres.join(", "):""),
+      "aggregateRating": undefined
+    };
+    if(info.score){
+      schema.aggregateRating = {
+        "@type":"AggregateRating",
+        "ratingValue": typeof info.score==="number" ? info.score.toFixed(1) : info.score,
+        "ratingCount": info.scoreCount || info.ratingCount || info.voteCount || ""
+      };
+    }
+    if(!schema.aggregateRating) delete schema.aggregateRating;
+    setJSONLD(schema);
+  }
+
   function pageDetail(id){
     highlightNav("");
     if(!id){ mbPage.innerHTML="<h2>Missing id</h2>";return;}
 
     setLoading();
+
+    if(detailCache[id]){
+      renderDetailFromCache(id);
+      return;
+    }
 
     apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
       const info = detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
@@ -649,113 +791,127 @@
         url: location.href
       });
 
+      buildDetailSchema(info, cover);
+
       apiGET("/wefeed-h5-bff/web/subject/detail-rec",{subjectId:id,page:1,perPage:12},recRes=>{
         const rec = pickItems(recRes);
 
-        const epHTML = episodes.length ? `
-          <div class="detail-episodes-row">
+        detailCache[id] = {
+          info, episodes, cover, year, country, genre, score, votesText, rec
+        };
+
+        renderDetailFromCache(id);
+      });
+    });
+  }
+
+  function renderDetailFromCache(id){
+    const c = detailCache[id];
+    if(!c){ mbPage.innerHTML="<h2>Not found</h2>"; return; }
+    const {info, episodes, cover, year, country, genre, score, votesText, rec} = c;
+
+    const epHTML = episodes.length ? `
+      <div class="detail-episodes-row">
+        ${
+          episodes.map((e,idx)=>{
+            const epId = e.episodeId || e.id || "";
+            const name = e.name || ("Ep " + (idx+1));
+            return `
+              <a href="#/watch/${id}/ep/${epId}">
+                <span class="detail-ep-pill">${esc(name)}</span>
+              </a>
+            `;
+          }).join("")
+        }
+      </div>
+    ` : `<p style="color:#aaa;font-size:13px;">No episodes listed.</p>`;
+
+    mbPage.innerHTML=`
+      <div class="detail-layout">
+        <div class="detail-main">
+          <div class="detail-top">
+            <img src="${cover}" class="detail-poster">
+            <div class="detail-info">
+              <div class="detail-title">${getTitle(info)}</div>
+              <div class="detail-meta-line">
+                ${esc(year)} &nbsp; | &nbsp; ${esc(country)} &nbsp; | &nbsp; ${esc(genre)}
+              </div>
+              <p class="detail-desc">${esc(info.description||"")}</p>
+              <div class="detail-buttons">
+                <a href="#/watch/${id}" class="btn btn-watch-main">▶ Watch Online</a>
+                <span class="btn-secondary btn-watch-app">Watch in App</span>
+              </div>
+              <div class="detail-social-row">
+                <span>Share:</span>
+                <span class="detail-social-pill">FB</span>
+                <span class="detail-social-pill">X</span>
+                <span class="detail-social-pill">TG</span>
+                <span class="detail-social-pill">WA</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-tabs">
+            <div class="detail-tab active" data-tab="episodes">Episodes</div>
+            <div class="detail-tab" data-tab="cast">Top Cast</div>
+            <div class="detail-tab" data-tab="reviews">User Review</div>
+          </div>
+
+          <div class="detail-section" id="detail-tab-episodes">
+            ${epHTML}
+          </div>
+          <div class="detail-section hidden" id="detail-tab-cast">
+            <p style="color:#aaa;font-size:13px;">Cast data not available.</p>
+          </div>
+          <div class="detail-section hidden" id="detail-tab-reviews">
+            <p style="color:#aaa;font-size:13px;">User reviews not available.</p>
+          </div>
+
+          <h2 style="margin-top:24px;">Similar</h2>
+          <div class="grid">
             ${
-              episodes.map((e,idx)=>{
-                const epId = e.episodeId || e.id || "";
-                const name = e.name || ("Ep " + (idx+1));
+              (c.rec||[]).map(m=>{
+                const cc=m.cover && m.cover.url?m.cover.url:"";
                 return `
-                  <a href="#/watch/${id}/ep/${epId}">
-                    <span class="detail-ep-pill">${esc(name)}</span>
+                  <a href="#/detail/${m.subjectId}">
+                    <div class="card">
+                      <img src="${cc}">
+                      <div class="card-title">${getTitle(m)}</div>
+                    </div>
                   </a>
                 `;
               }).join("")
             }
           </div>
-        ` : `<p style="color:#aaa;font-size:13px;">No episodes listed.</p>`;
+        </div>
 
-        mbPage.innerHTML=`
-          <div class="detail-layout">
-            <div class="detail-main">
-              <div class="detail-top">
-                <img src="${cover}" class="detail-poster">
-                <div class="detail-info">
-                  <div class="detail-title">${getTitle(info)}</div>
-                  <div class="detail-meta-line">
-                    ${esc(year)} &nbsp; | &nbsp; ${esc(country)} &nbsp; | &nbsp; ${esc(genre)}
-                  </div>
-                  <p class="detail-desc">${esc(info.description||"")}</p>
-                  <div class="detail-buttons">
-                    <a href="#/watch/${id}" class="btn btn-watch-main">▶ Watch Online</a>
-                    <span class="btn-secondary btn-watch-app">Watch in App</span>
-                  </div>
-                  <div class="detail-social-row">
-                    <span>Share:</span>
-                    <span class="detail-social-pill">FB</span>
-                    <span class="detail-social-pill">X</span>
-                    <span class="detail-social-pill">TG</span>
-                    <span class="detail-social-pill">WA</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="detail-tabs">
-                <div class="detail-tab active" data-tab="episodes">Episodes</div>
-                <div class="detail-tab" data-tab="cast">Top Cast</div>
-                <div class="detail-tab" data-tab="reviews">User Review</div>
-              </div>
-
-              <div class="detail-section" id="detail-tab-episodes">
-                ${epHTML}
-              </div>
-              <div class="detail-section hidden" id="detail-tab-cast">
-                <p style="color:#aaa;font-size:13px;">Cast data not available.</p>
-              </div>
-              <div class="detail-section hidden" id="detail-tab-reviews">
-                <p style="color:#aaa;font-size:13px;">User reviews not available.</p>
-              </div>
-
-              <h2 style="margin-top:24px;">Similar</h2>
-              <div class="grid">
-                ${
-                  rec.map(m=>{
-                    const c=m.cover && m.cover.url?m.cover.url:"";
-                    return `
-                      <a href="#/detail/${m.subjectId}">
-                        <div class="card">
-                          <img src="${c}">
-                          <div class="card-title">${getTitle(m)}</div>
-                        </div>
-                      </a>
-                    `;
-                  }).join("")
-                }
-              </div>
+        <div class="detail-right">
+          <div class="rating-box">
+            <div class="rating-label">Rating</div>
+            <div class="rating-score-row">
+              <span class="rating-star">★</span>
+              <span class="rating-score">${esc(score)}</span>
+              <span class="rating-outof">/10</span>
             </div>
-
-            <div class="detail-right">
-              <div class="rating-box">
-                <div class="rating-label">Rating</div>
-                <div class="rating-score-row">
-                  <span class="rating-star">★</span>
-                  <span class="rating-score">${esc(score)}</span>
-                  <span class="rating-outof">/10</span>
-                </div>
-                <div class="rating-votes">${esc(votesText)}</div>
-              </div>
-            </div>
+            <div class="rating-votes">${esc(votesText)}</div>
           </div>
-        `;
+        </div>
+      </div>
+    `;
 
-        // tabs
-        document.querySelectorAll("#moviebox-app .detail-tab").forEach(tab=>{
-          tab.onclick = ()=>{
-            const t = tab.getAttribute("data-tab");
-            document.querySelectorAll("#moviebox-app .detail-tab").forEach(x=>x.classList.remove("active"));
-            tab.classList.add("active");
-            ["episodes","cast","reviews"].forEach(name=>{
-              const sec = document.getElementById("detail-tab-"+name);
-              if(!sec) return;
-              if(name===t) sec.classList.remove("hidden");
-              else sec.classList.add("hidden");
-            });
-          };
+    // tabs
+    document.querySelectorAll("#moviebox-app .detail-tab").forEach(tab=>{
+      tab.onclick = ()=>{
+        const t = tab.getAttribute("data-tab");
+        document.querySelectorAll("#moviebox-app .detail-tab").forEach(x=>x.classList.remove("active"));
+        tab.classList.add("active");
+        ["episodes","cast","reviews"].forEach(name=>{
+          const sec = document.getElementById("detail-tab-"+name);
+          if(!sec) return;
+          if(name===t) sec.classList.remove("hidden");
+          else sec.classList.add("hidden");
         });
-      });
+      };
     });
   }
 
@@ -796,6 +952,13 @@
         url: location.href
       });
 
+      setJSONLD({
+        "@context":"https://schema.org",
+        "@type":"WatchAction",
+        "name":"Watch "+getTitle(subject),
+        "target":location.href
+      });
+
       const epLabel = epId ? ("Episode: "+esc(epId)) : "";
 
       mbPage.innerHTML=`
@@ -832,6 +995,14 @@
       description: "Your watch history on BlackMeMovie.",
       image: "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
       url: location.href
+    });
+
+    setJSONLD({
+      "@context":"https://schema.org",
+      "@type":"ItemList",
+      "name":"Watch history – BlackMeMovie",
+      "url":location.href,
+      "numberOfItems":list.length
     });
 
     if(!list.length){
