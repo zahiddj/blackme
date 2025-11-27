@@ -509,3 +509,15 @@ header,
     margin-top:14px;
   }
 }
+
+
+
+/* FIX: Burger menu dropdown corner */
+#moviebox-app .logo-burger {
+    border: 1px solid #1a1a1d;
+    border-radius: 8px !important;   /* smooth corner */
+}
+
+#moviebox-app .header {
+    overflow: visible !important;     /* prevents clipping */
+}
