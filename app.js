@@ -44,12 +44,11 @@
     sort: "ForYou"
   };
 
-  // caches
-  let homeCache = null;       // { trending, movies, shows }
-  const searchCache = {};     // q -> list
-  const detailCache = {};     // id -> {...}
+  let homeCache = null;
+  const searchCache = {};
+  const detailCache = {};
 
-  /* ===================== DYNAMIC SEO ENGINE ===================== */
+  /* ============ SEO ============ */
   function updateSEO(config){
     config = config || {};
     const title = config.title || "BlackMeMovie – Watch Movies & TV Shows Online Free";
@@ -59,81 +58,49 @@
 
     document.title = title;
 
-    // Meta description
-    let md = document.querySelector('meta[name="description"]');
-    if (!md){
-      md = document.createElement("meta");
-      md.name = "description";
-      document.head.appendChild(md);
+    function ensureMeta(selector, createFn){
+      let el = document.querySelector(selector);
+      if(!el){
+        el = createFn();
+        document.head.appendChild(el);
+      }
+      return el;
     }
-    md.content = description;
 
-    // OG: title
-    let ogt = document.querySelector('meta[property="og:title"]');
-    if (!ogt){
-      ogt = document.createElement("meta");
-      ogt.setAttribute("property","og:title");
-      document.head.appendChild(ogt);
-    }
-    ogt.content = title;
+    ensureMeta('meta[name="description"]', ()=> {
+      const m=document.createElement("meta"); m.name="description"; return m;
+    }).content = description;
 
-    // OG: description
-    let ogd = document.querySelector('meta[property="og:description"]');
-    if (!ogd){
-      ogd = document.createElement("meta");
-      ogd.setAttribute("property","og:description");
-      document.head.appendChild(ogd);
-    }
-    ogd.content = description;
+    ensureMeta('meta[property="og:title"]', ()=> {
+      const m=document.createElement("meta"); m.setAttribute("property","og:title"); return m;
+    }).content = title;
 
-    // OG: image
-    let ogi = document.querySelector('meta[property="og:image"]');
-    if (!ogi){
-      ogi = document.createElement("meta");
-      ogi.setAttribute("property","og:image");
-      document.head.appendChild(ogi);
-    }
-    ogi.content = image;
+    ensureMeta('meta[property="og:description"]', ()=> {
+      const m=document.createElement("meta"); m.setAttribute("property","og:description"); return m;
+    }).content = description;
 
-    // OG: url
-    let ogu = document.querySelector('meta[property="og:url"]');
-    if (!ogu){
-      ogu = document.createElement("meta");
-      ogu.setAttribute("property","og:url");
-      document.head.appendChild(ogu);
-    }
-    ogu.content = url;
+    ensureMeta('meta[property="og:image"]', ()=> {
+      const m=document.createElement("meta"); m.setAttribute("property","og:image"); return m;
+    }).content = image;
 
-    // Twitter title
-    let twt = document.querySelector('meta[name="twitter:title"]');
-    if (!twt){
-      twt = document.createElement("meta");
-      twt.name = "twitter:title";
-      document.head.appendChild(twt);
-    }
-    twt.content = title;
+    ensureMeta('meta[property="og:url"]', ()=> {
+      const m=document.createElement("meta"); m.setAttribute("property","og:url"); return m;
+    }).content = url;
 
-    // Twitter description
-    let twd = document.querySelector('meta[name="twitter:description"]');
-    if (!twd){
-      twd = document.createElement("meta");
-      twd.name = "twitter:description";
-      document.head.appendChild(twd);
-    }
-    twd.content = description;
+    ensureMeta('meta[name="twitter:title"]', ()=> {
+      const m=document.createElement("meta"); m.name="twitter:title"; return m;
+    }).content = title;
 
-    // Twitter image
-    let twi = document.querySelector('meta[name="twitter:image"]');
-    if (!twi){
-      twi = document.createElement("meta");
-      twi.name = "twitter:image";
-      document.head.appendChild(twi);
-    }
-    twi.content = image;
+    ensureMeta('meta[name="twitter:description"]', ()=> {
+      const m=document.createElement("meta"); m.name="twitter:description"; return m;
+    }).content = description;
 
-    // Canonical link
+    ensureMeta('meta[name="twitter:image"]', ()=> {
+      const m=document.createElement("meta"); m.name="twitter:image"; return m;
+    }).content = image;
+
     let canon = document.querySelector('link[rel="canonical"]');
-    if (!canon){
+    if(!canon){
       canon = document.createElement("link");
       canon.rel = "canonical";
       document.head.appendChild(canon);
@@ -141,7 +108,6 @@
     canon.href = url;
   }
 
-  // JSON-LD schema helper
   function setJSONLD(obj){
     try{
       let el = document.getElementById("bm-schema");
@@ -154,27 +120,24 @@
       el.textContent = JSON.stringify(obj);
     }catch(e){}
   }
-  /* ============================================================= */
 
+  /* ============ UTIL ============ */
   function esc(s){
     return (s || "").toString().replace(/[&<>"']/g, m => ({
       "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
     }[m]));
   }
-
   function cleanTitle(raw){
     const t = (raw || "").toString().trim();
     if(!t) return "Unknown Title";
     if(t.length>60) return t.slice(0,57)+"...";
     return t;
   }
-
   function getTitle(m){
     return cleanTitle(
       m.title || m.subTitle || m.name || m.seriesName || m.showName || m.videoTitle
     );
   }
-
   function pickItems(resp){
     if(!resp || !resp.data) return [];
     const data = resp.data;
@@ -183,7 +146,6 @@
     if(Array.isArray(data.list)) return data.list;
     return [];
   }
-
   function apiGET(path, params, cb){
     const sp = new URLSearchParams(params||{});
     const url = API + path + (sp.toString() ? ("?" + sp.toString()) : "");
@@ -198,7 +160,7 @@
     }).then(r=>r.json()).then(cb).catch(()=>cb({}));
   }
 
-  /* HISTORY HELPERS */
+  /* HISTORY */
   function pushHistory(item){
     try{
       let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
@@ -214,42 +176,34 @@
     }catch(e){return [];}
   }
 
-  /* ============ LAYOUT ============ */
+  /* LAYOUT */
   function layout(){
     const root = document.getElementById("moviebox-app");
     if(!root) return;
-
     root.innerHTML = `
       <div class="mb-shell">
         <div class="mb-sidebar">
           <div class="mb-nav-list">
             <div class="mb-nav-item" data-route="#/home">
-              <span class="icon">🏠</span>
-              <span class="text">Home</span>
+              <span class="icon">🏠</span><span class="text">Home</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/TV">
-              <span class="icon">📺</span>
-              <span class="text">TV Show</span>
+              <span class="icon">📺</span><span class="text">TV Show</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Movie">
-              <span class="icon">🎬</span>
-              <span class="text">Movie</span>
+              <span class="icon">🎬</span><span class="text">Movie</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Animation">
-              <span class="icon">🐻</span>
-              <span class="text">Animation</span>
+              <span class="icon">🐻</span><span class="text">Animation</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Sport">
-              <span class="icon">🎮</span>
-              <span class="text">Sport Live</span>
+              <span class="icon">🎮</span><span class="text">Sport Live</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Novel">
-              <span class="icon">📖</span>
-              <span class="text">Novel 🔥</span>
+              <span class="icon">📖</span><span class="text">Novel 🔥</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/MostWatched">
-              <span class="icon">📊</span>
-              <span class="text">Most Watched</span>
+              <span class="icon">📊</span><span class="text">Most Watched</span>
             </div>
           </div>
         </div>
@@ -274,7 +228,6 @@
           </div>
 
           <div class="container">
-            <!-- DROPDOWN MENU NAV (for mobile) -->
             <select class="mb-dropdown" id="mb-nav-dropdown">
               <option value="#/home">🏠 Home</option>
               <option value="#/category/TV">📺 TV show</option>
@@ -295,31 +248,30 @@
       </div>
     `;
 
-    // sidebar routing
+    // sidebar click
     root.querySelectorAll(".mb-nav-item").forEach(el=>{
       el.addEventListener("click",()=>{
         const r = el.getAttribute("data-route");
-        if(r) {
+        if(r){
           location.hash = r;
-          // close sidebar on mobile when clicked
           document.body.classList.remove("mb-sidebar-open");
         }
       });
     });
 
-    // dropdown routing
+    // dropdown
     const navDropdown = document.getElementById("mb-nav-dropdown");
     if(navDropdown){
       navDropdown.addEventListener("change",()=>{
         const v = navDropdown.value;
-        if(v) location.hash = v;
+        if(v) location.hash=v;
       });
     }
 
-    // mobile burger - simple toggle class on body
+    // burger
     const burger = root.querySelector(".logo-burger");
     if(burger){
-      burger.addEventListener("click", ()=>{
+      burger.addEventListener("click",()=>{
         document.body.classList.toggle("mb-sidebar-open");
       });
     }
@@ -329,50 +281,44 @@
     const sIcon = document.getElementById("mb-search-icon");
     const triggerSearch = ()=>{
       const v=(sInput.value||"").trim();
-      if(v) location.hash="#/search/"+encodeURIComponent(v);
+      if(v) location.hash = "#/search/"+encodeURIComponent(v);
     };
     if(sInput){
       sInput.addEventListener("keydown",e=>{
         if(e.key==="Enter") triggerSearch();
       });
     }
-    if(sIcon){
-      sIcon.addEventListener("click",triggerSearch);
-    }
+    if(sIcon) sIcon.addEventListener("click",triggerSearch);
 
+    // history button
     const hBtn = document.getElementById("mb-btn-history");
-    if(hBtn){
-      hBtn.onclick = ()=>{ location.hash="#/history"; };
-    }
+    if(hBtn) hBtn.onclick = ()=>{ location.hash="#/history"; };
   }
 
   let mbPage = null;
-
   function setLoading(){
     if(!mbPage) mbPage=document.getElementById("mb-page");
     if(mbPage) mbPage.innerHTML='<div class="loader"></div>';
   }
 
   function highlightNav(route){
-    const root=document.getElementById("moviebox-app");
+    const root = document.getElementById("moviebox-app");
     if(!root) return;
-
     root.querySelectorAll(".mb-nav-item").forEach(el=>{
       if(el.getAttribute("data-route")===route) el.classList.add("active");
       else el.classList.remove("active");
     });
-
     const navDropdown = document.getElementById("mb-nav-dropdown");
     if(navDropdown){
       if(route && navDropdown.querySelector(`option[value="${route}"]`)){
         navDropdown.value = route;
-      } else {
+      }else{
         navDropdown.value = "#/home";
       }
     }
   }
 
-  /* HOME PAGE */
+  /* HOME */
   function buildHomeSchema(trending, movies, shows){
     const urlBase = location.origin + location.pathname;
     const sample = (trending && trending[0]) || (movies && movies[0]) || (shows && shows[0]);
@@ -388,22 +334,18 @@
       }
     };
     if(sample){
-      schema.about = {
-        "@type":"Movie",
-        "name": getTitle(sample)
-      };
+      schema.about = { "@type":"Movie", "name": getTitle(sample) };
     }
     setJSONLD(schema);
   }
 
   function pageHome(){
     highlightNav("#/home");
-
     updateSEO({
-      title: "BlackMeMovie – Watch Movies & TV Shows Online Free",
-      description: "Watch trending movies, TV shows, drama, anime & more on BlackMeMovie. Free HD streaming.",
-      image: "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-      url: location.href
+      title:"BlackMeMovie – Watch Movies & TV Shows Online Free",
+      description:"Watch trending movies, TV shows, drama, anime & more on BlackMeMovie. Free HD streaming.",
+      image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      url:location.href
     });
 
     if(homeCache){
@@ -415,7 +357,6 @@
     }
 
     setLoading();
-
     apiGET("/wefeed-h5-bff/web/subject/trending",{page:0,perPage:18},trendRes=>{
       currentTrending = pickItems(trendRes);
       currentHeroIndex = 0;
@@ -435,7 +376,6 @@
             movies: movies.slice(),
             shows: shows.slice()
           };
-
           buildHomeSchema(homeCache.trending, homeCache.movies, homeCache.shows);
           renderHome(movies,shows);
         });
@@ -446,19 +386,17 @@
   function renderHome(movies,shows){
     if(!mbPage) mbPage=document.getElementById("mb-page");
     if(!mbPage) return;
-
-    const trending = currentTrending || [];
+    const trending=currentTrending||[];
     const hero = trending[currentHeroIndex] || null;
 
-    let heroHTML="";
+    let heroHTML = "";
     if(hero){
       const cover = hero.cover && hero.cover.url ? hero.cover.url : "";
-      const dots = [];
+      const dots=[];
       const maxDots = Math.min(trending.length,6);
       for(let i=0;i<maxDots;i++){
         dots.push('<div class="hero-dot'+(i===currentHeroIndex?' active':'')+'" data-hero-index="'+i+'"></div>');
       }
-
       heroHTML = `
         <div class="hero">
           <div class="hero-bg" style="background-image:url('${cover}')"></div>
@@ -489,55 +427,60 @@
 
     mbPage.innerHTML = `
       ${heroHTML}
-
       <div>
         <div class="section-title">🔥 Trending</div>
         <div class="grid">
-          ${trending.map(m=>{
-            const c = m.cover && m.cover.url ? m.cover.url : "";
-            return `
-              <a href="#/detail/${m.subjectId}">
-                <div class="card">
-                  <img src="${c}">
-                  <div class="card-title">${getTitle(m)}</div>
-                </div>
-              </a>
-            `;
-          }).join("")}
+          ${
+            trending.map(m=>{
+              const c=m.cover && m.cover.url?m.cover.url:"";
+              return `
+                <a href="#/detail/${m.subjectId}">
+                  <div class="card">
+                    <img src="${c}">
+                    <div class="card-title">${getTitle(m)}</div>
+                  </div>
+                </a>
+              `;
+            }).join("")
+          }
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div class="section-title">🎞 Movies</div>
         <div class="grid">
-          ${movies.map(m=>{
-            const c = m.cover && m.cover.url ? m.cover.url : "";
-            return `
-              <a href="#/detail/${m.subjectId}">
-                <div class="card">
-                  <img src="${c}">
-                  <div class="card-title">${getTitle(m)}</div>
-                </div>
-              </a>
-            `;
-          }).join("")}
+          ${
+            movies.map(m=>{
+              const c=m.cover && m.cover.url?m.cover.url:"";
+              return `
+                <a href="#/detail/${m.subjectId}">
+                  <div class="card">
+                    <img src="${c}">
+                    <div class="card-title">${getTitle(m)}</div>
+                  </div>
+                </a>
+              `;
+            }).join("")
+          }
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div class="section-title">📺 TV Shows</div>
         <div class="grid">
-          ${shows.map(m=>{
-            const c = m.cover && m.cover.url ? m.cover.url : "";
-            return `
-              <a href="#/detail/${m.subjectId}">
-                <div class="card">
-                  <img src="${c}">
-                  <div class="card-title">${getTitle(m)}</div>
-                </div>
-              </a>
-            `;
-          }).join("")}
+          ${
+            shows.map(m=>{
+              const c=m.cover && m.cover.url?m.cover.url:"";
+              return `
+                <a href="#/detail/${m.subjectId}">
+                  <div class="card">
+                    <img src="${c}">
+                    <div class="card-title">${getTitle(m)}</div>
+                  </div>
+                </a>
+              `;
+            }).join("")
+          }
         </div>
       </div>
     `;
@@ -563,9 +506,9 @@
     });
   }
 
-  /* CATEGORY PAGE WITH LIVE FILTERS */
-  function mapTypeToClassify(typeParam){
-    switch(typeParam){
+  /* CATEGORY */
+  function mapTypeToClassify(t){
+    switch(t){
       case "TV": return "TV";
       case "Movie": return "Movie";
       case "Animation": return "Animation";
@@ -578,19 +521,17 @@
 
   function pageCategory(typeParam){
     highlightNav("#/category/"+typeParam);
-
     updateSEO({
-      title: esc(typeParam)+" – Browse | BlackMeMovie",
-      description: "Browse "+typeParam+" content on BlackMeMovie in HD.",
-      image: "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-      url: location.href
+      title:esc(typeParam)+" – Browse | BlackMeMovie",
+      description:"Browse "+typeParam+" content on BlackMeMovie in HD.",
+      image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      url:location.href
     });
-
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"CollectionPage",
       "name": typeParam+" – BlackMeMovie",
-      "url": location.href
+      "url":location.href
     });
 
     const classify = mapTypeToClassify(typeParam);
@@ -599,14 +540,12 @@
     categoryState.country="All";
     categoryState.year="All";
     categoryState.language="All";
-    categoryState.sort = (typeParam==="MostWatched") ? "Hottest" : "ForYou";
+    categoryState.sort = (typeParam==="MostWatched")?"Hottest":"ForYou";
 
     if(!mbPage) mbPage=document.getElementById("mb-page");
     if(!mbPage) return;
-
     mbPage.innerHTML = `
       <h1>${esc(typeParam)}</h1>
-
       <div class="mb-filter-panel">
         <div class="mb-filter-row">
           <div class="mb-filter-label">Genre</div>
@@ -629,19 +568,17 @@
           <div class="mb-filter-options" id="mb-filter-sort"></div>
         </div>
       </div>
-
       <div class="grid" id="mb-filter-grid"></div>
     `;
-
     renderFilterPills();
     loadCategoryResults();
   }
 
-  function renderFilterGroup(containerId, labelArr, activeVal, filterKey){
+  function renderFilterGroup(containerId,labelArr,activeVal,filterKey){
     const el=document.getElementById(containerId);
     if(!el) return;
     el.innerHTML = labelArr.map(v=>{
-      const cls = "mb-filter-pill"+(v===activeVal?" active":"");
+      const cls="mb-filter-pill"+(v===activeVal?" active":"");
       return `<span class="${cls}" data-filter="${filterKey}" data-value="${esc(v)}">${esc(v)}</span>`;
     }).join("");
   }
@@ -654,11 +591,11 @@
     renderFilterGroup("mb-filter-sort",SORT_OPTIONS,categoryState.sort,"sort");
 
     document.querySelectorAll("#moviebox-app .mb-filter-pill").forEach(el=>{
-      el.onclick = ()=>{
-        const key = el.getAttribute("data-filter");
-        const val = el.getAttribute("data-value");
+      el.onclick=()=>{
+        const key=el.getAttribute("data-filter");
+        const val=el.getAttribute("data-value");
         if(!key) return;
-        categoryState[key] = val;
+        categoryState[key]=val;
         renderFilterPills();
         loadCategoryResults();
       };
@@ -681,11 +618,10 @@
       country:categoryState.country,
       language:categoryState.language
     };
-
     apiPOST("/wefeed-h5-bff/web/filter",body,res=>{
       const data=pickItems(res);
       grid.innerHTML = data.map(m=>{
-        const c = m.cover && m.cover.url ? m.cover.url : "";
+        const c=m.cover && m.cover.url?m.cover.url:"";
         return `
           <a href="#/detail/${m.subjectId}">
             <div class="card">
@@ -698,17 +634,16 @@
     });
   }
 
-  /* SEARCH PAGE – REAL POST /subject/search */
-  function renderSearchPage(q, list){
+  /* SEARCH */
+  function renderSearchPage(q,list){
     if(!mbPage) mbPage=document.getElementById("mb-page");
     if(!mbPage) return;
-
     mbPage.innerHTML = `
       <h1>Search: ${esc(q)}</h1>
       <div class="grid">
         ${
           list.map(m=>{
-            const c = m.cover && m.cover.url ? m.cover.url : "";
+            const c=m.cover && m.cover.url?m.cover.url:"";
             return `
               <a href="#/detail/${m.subjectId}">
                 <div class="card">
@@ -726,14 +661,12 @@
   function pageSearch(q){
     highlightNav("");
     setLoading();
-
     updateSEO({
-      title: "Search: "+q+" – BlackMeMovie",
-      description: "Search results for '"+q+"' on BlackMeMovie.",
-      image: "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-      url: location.href
+      title:"Search: "+q+" – BlackMeMovie",
+      description:"Search results for '"+q+"' on BlackMeMovie.",
+      image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      url:location.href
     });
-
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"SearchResultsPage",
@@ -743,52 +676,48 @@
     });
 
     if(searchCache[q]){
-      renderSearchPage(q, searchCache[q]);
+      renderSearchPage(q,searchCache[q]);
       return;
     }
-
-    const payload = { keyword:q, page:1, perPage:PER_PAGE };
-
-    fetch(API + "/wefeed-h5-bff/web/subject/search", {
+    const payload={keyword:q,page:1,perPage:PER_PAGE};
+    fetch(API+"/wefeed-h5-bff/web/subject/search",{
       method:"POST",
       headers:Object.assign({},COMMON_HEADERS,{"Content-Type":"application/json"}),
       body:JSON.stringify(payload)
     })
     .then(r=>r.json())
     .then(resp=>{
-      const list = pickItems(resp);
-      searchCache[q] = list.slice();
-      renderSearchPage(q, list);
+      const list=pickItems(resp);
+      searchCache[q]=list.slice();
+      renderSearchPage(q,list);
     })
     .catch(()=>{
       if(!mbPage) mbPage=document.getElementById("mb-page");
-      if(mbPage) mbPage.innerHTML = `<p style="color:#aaa">Search failed.</p>`;
+      if(mbPage) mbPage.innerHTML='<p style="color:#aaa">Search failed.</p>';
     });
   }
 
-  /* DETAIL PAGE – with detail-rec recommendations */
-  function buildDetailSchema(info, cover){
-    info = info || {};
-    const typeStr = (info.classify || info.typeName || info.subjectType || "").toLowerCase();
-    const isSeries = typeStr.indexOf("tv")!==-1 || typeStr.indexOf("series")!==-1 || typeStr.indexOf("show")!==-1;
-    const schema = {
+  /* DETAIL */
+  function buildDetailSchema(info,cover){
+    info=info||{};
+    const typeStr=(info.classify || info.typeName || info.subjectType || "").toLowerCase();
+    const isSeries = typeStr.includes("tv") || typeStr.includes("series") || typeStr.includes("show");
+    const schema={
       "@context":"https://schema.org",
-      "@type": isSeries ? "TVSeries" : "Movie",
-      "name": getTitle(info),
-      "image": cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-      "description": info.description || "",
-      "datePublished": info.releaseDate || info.year || "",
-      "genre": info.genre || (Array.isArray(info.genres)?info.genres.join(", "):""),
-      "aggregateRating": undefined
+      "@type":isSeries?"TVSeries":"Movie",
+      "name":getTitle(info),
+      "image":cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      "description":info.description || "",
+      "datePublished":info.releaseDate || info.year || "",
+      "genre":info.genre || (Array.isArray(info.genres)?info.genres.join(", "):"")
     };
     if(info.score){
-      schema.aggregateRating = {
+      schema.aggregateRating={
         "@type":"AggregateRating",
-        "ratingValue": typeof info.score==="number" ? info.score.toFixed(1) : info.score,
-        "ratingCount": info.scoreCount || info.ratingCount || info.voteCount || ""
+        "ratingValue":typeof info.score==="number"?info.score.toFixed(1):info.score,
+        "ratingCount":info.scoreCount || info.ratingCount || info.voteCount || ""
       };
     }
-    if(!schema.aggregateRating) delete schema.aggregateRating;
     setJSONLD(schema);
   }
 
@@ -799,7 +728,6 @@
       if(mbPage) mbPage.innerHTML="<h2>Missing id</h2>";
       return;
     }
-
     setLoading();
 
     if(detailCache[id]){
@@ -811,37 +739,27 @@
       const info = detailRes && detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
       const episodes = info.episodes || info.episodeList || [];
       const cover = info.cover && info.cover.url ? info.cover.url : "";
-
       const year = info.releaseDate || info.year || "";
       const country = info.countryName || "";
       const genre = info.genre || (Array.isArray(info.genres)?info.genres.join(", "):"");
-
       const rawScore = info.score || info.imdbScore || info.doubanScore || info.ratingScore || "";
-      const score = rawScore ? (typeof rawScore==="number" ? rawScore.toFixed(1) : rawScore) : "–";
+      const score = rawScore ? (typeof rawScore==="number"?rawScore.toFixed(1):rawScore) : "–";
       const votes = info.scoreCount || info.ratingCount || info.voteCount || info.imdbVotes || "";
-      const votesText = votes ? (votes + " people rated") : "No rating yet";
+      const votesText = votes ? (votes+" people rated") : "No rating yet";
 
       updateSEO({
-        title: getTitle(info)+" – Watch Online | BlackMeMovie",
-        description: info.description || ("Watch "+getTitle(info)+" online in HD on BlackMeMovie."),
-        image: cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-        url: location.href
+        title:getTitle(info)+" – Watch Online | BlackMeMovie",
+        description:info.description || ("Watch "+getTitle(info)+" online in HD on BlackMeMovie."),
+        image:cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+        url:location.href
       });
+      buildDetailSchema(info,cover);
 
-      buildDetailSchema(info, cover);
-
-      // IMPORTANT: use GET detail-rec like your example URL
       apiGET("/wefeed-h5-bff/web/subject/detail-rec",{
-        subjectId:id,
-        page:1,
-        perPage:12
+        subjectId:id,page:1,perPage:12
       },recRes=>{
-        const rec = pickItems(recRes);
-
-        detailCache[id] = {
-          info, episodes, cover, year, country, genre, score, votesText, rec
-        };
-
+        const rec=pickItems(recRes);
+        detailCache[id]={info,episodes,cover,year,country,genre,score,votesText,rec};
         renderDetailFromCache(id);
       });
     });
@@ -850,31 +768,25 @@
   function renderDetailFromCache(id){
     if(!mbPage) mbPage=document.getElementById("mb-page");
     if(!mbPage) return;
+    const c=detailCache[id];
+    if(!c){ mbPage.innerHTML="<h2>Not found</h2>"; return;}
+    const {info,episodes,cover,year,country,genre,score,votesText,rec}=c;
 
-    const c = detailCache[id];
-    if(!c){
-      mbPage.innerHTML="<h2>Not found</h2>";
-      return;
-    }
-    const {info, episodes, cover, year, country, genre, score, votesText, rec} = c;
-
-    const epHTML = (episodes && episodes.length) ? `
-      <div class="detail-episodes-row">
-        ${
+    const epHTML = (episodes && episodes.length)
+      ? `<div class="detail-episodes-row">${
           episodes.map((e,idx)=>{
-            const epId = e.episodeId || e.id || "";
-            const name = e.name || ("Ep " + (idx+1));
+            const epId=e.episodeId || e.id || "";
+            const name=e.name || ("Ep "+(idx+1));
             return `
               <a href="#/watch/${id}/ep/${epId}">
                 <span class="detail-ep-pill">${esc(name)}</span>
               </a>
             `;
           }).join("")
-        }
-      </div>
-    ` : `<p style="color:#aaa;font-size:13px;">No episodes listed.</p>`;
+        }</div>`
+      : `<p style="color:#aaa;font-size:13px;">No episodes listed.</p>`;
 
-    mbPage.innerHTML=`
+    mbPage.innerHTML = `
       <div class="detail-layout">
         <div class="detail-main">
           <div class="detail-top">
@@ -947,14 +859,13 @@
       </div>
     `;
 
-    // tabs
     document.querySelectorAll("#moviebox-app .detail-tab").forEach(tab=>{
-      tab.onclick = ()=>{
-        const t = tab.getAttribute("data-tab");
+      tab.onclick=()=>{
+        const t=tab.getAttribute("data-tab");
         document.querySelectorAll("#moviebox-app .detail-tab").forEach(x=>x.classList.remove("active"));
         tab.classList.add("active");
         ["episodes","cast","reviews"].forEach(name=>{
-          const sec = document.getElementById("detail-tab-"+name);
+          const sec=document.getElementById("detail-tab-"+name);
           if(!sec) return;
           if(name===t) sec.classList.remove("hidden");
           else sec.classList.add("hidden");
@@ -963,7 +874,7 @@
     });
   }
 
-  /* WATCH – LokLok iframe + history */
+  /* WATCH */
   function pageWatch(id,epId){
     highlightNav("");
     if(!id){
@@ -971,21 +882,17 @@
       if(mbPage) mbPage.innerHTML="<h2>Missing id</h2>";
       return;
     }
-
     setLoading();
-
     apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
-      const subject = detailRes && detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
-      let slug = subject.detailPath || subject.pagePath || subject.seoUrl || "";
+      const subject=detailRes && detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
+      let slug=subject.detailPath || subject.pagePath || subject.seoUrl || "";
       if(slug && slug.indexOf("/")!==-1){
         const parts=slug.split("/");
         slug=parts[parts.length-1];
       }
       if(!slug) slug="movie-"+id;
-
-      const cover = (subject.cover && subject.cover.url) || "";
-
-      const loklokUrl =
+      const cover=(subject.cover && subject.cover.url)||"";
+      const loklokUrl=
         "https://lok-lok.cc/spa/videoPlayPage/movies/"+encodeURIComponent(slug)+
         "?id="+encodeURIComponent(id)+
         "&type=/movie/detail&lang=en";
@@ -993,17 +900,16 @@
       pushHistory({
         id:id,
         title:getTitle(subject),
-        cover:(subject.cover && subject.cover.url) || "",
+        cover:(subject.cover && subject.cover.url)||"",
         ts:Date.now()
       });
 
       updateSEO({
-        title: "Watch "+getTitle(subject)+" – BlackMeMovie",
-        description: "Streaming "+getTitle(subject)+" online in HD on BlackMeMovie.",
-        image: cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-        url: location.href
+        title:"Watch "+getTitle(subject)+" – BlackMeMovie",
+        description:"Streaming "+getTitle(subject)+" online in HD on BlackMeMovie.",
+        image:cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+        url:location.href
       });
-
       setJSONLD({
         "@context":"https://schema.org",
         "@type":"WatchAction",
@@ -1011,47 +917,38 @@
         "target":location.href
       });
 
-      const epLabel = epId ? ("Episode: "+esc(epId)) : "";
-
       if(!mbPage) mbPage=document.getElementById("mb-page");
       if(!mbPage) return;
-
-      mbPage.innerHTML=`
+      const epLabel = epId ? ("Episode: "+esc(epId)) : "";
+      mbPage.innerHTML = `
         <h1>Watching</h1>
         ${epLabel ? `<div style="margin-bottom:8px;color:#ccc;font-size:13px;">${epLabel}</div>` : ""}
-
         <div class="player-wrapper">
-          <iframe
-            class="player-iframe"
+          <iframe class="player-iframe"
             src="${loklokUrl}"
             allowfullscreen
             scrolling="no"
             referrerpolicy="no-referrer-when-downgrade">
           </iframe>
         </div>
-
         <p style="color:#888;font-size:12px;margin-top:10px;word-break:break-all">
           LokLok iframe URL:<br>${esc(loklokUrl)}
         </p>
-
         <a class="btn" href="#/detail/${id}" style="margin-top:8px;display:inline-block;">⬅ Back</a>
       `;
     });
   }
 
-  /* HISTORY PAGE */
+  /* HISTORY */
   function pageHistory(){
     highlightNav("");
-
-    const list = readHistory();
-
+    const list=readHistory();
     updateSEO({
-      title: "Watch history – BlackMeMovie",
-      description: "Your watch history on BlackMeMovie.",
-      image: "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-      url: location.href
+      title:"Watch history – BlackMeMovie",
+      description:"Your watch history on BlackMeMovie.",
+      image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      url:location.href
     });
-
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"ItemList",
@@ -1062,9 +959,8 @@
 
     if(!mbPage) mbPage=document.getElementById("mb-page");
     if(!mbPage) return;
-
     if(!list.length){
-      mbPage.innerHTML = `
+      mbPage.innerHTML=`
         <h1>Watch history</h1>
         <p style="color:#aaa;font-size:13px;margin-top:6px;">
           No history yet. Start watching something on BlackMeMovie.
@@ -1072,22 +968,24 @@
       `;
       return;
     }
-    mbPage.innerHTML = `
+    mbPage.innerHTML=`
       <h1>Watch history</h1>
       <div class="grid">
-        ${list.map(item=>{
-          return `
-            <a href="#/detail/${item.id}">
-              <div class="card">
-                <img src="${esc(item.cover)}">
-                <div class="card-title">${esc(cleanTitle(item.title))}</div>
-                <div class="history-meta">
-                  Last watched: ${new Date(item.ts||0).toLocaleString()}
+        ${
+          list.map(item=>{
+            return `
+              <a href="#/detail/${item.id}">
+                <div class="card">
+                  <img src="${esc(item.cover)}">
+                  <div class="card-title">${esc(cleanTitle(item.title))}</div>
+                  <div class="history-meta">
+                    Last watched: ${new Date(item.ts||0).toLocaleString()}
+                  </div>
                 </div>
-              </div>
-            </a>
-          `;
-        }).join("")}
+              </a>
+            `;
+          }).join("")
+        }
       </div>
     `;
   }
@@ -1096,45 +994,27 @@
   function router(){
     mbPage=document.getElementById("mb-page");
     if(!mbPage) return;
-
     let h=location.hash||"#/home";
     h=h.replace(/^#\//,"");
     const parts=h.split("/");
 
-    if(!h || h==="home"){
-      pageHome();
-      return;
-    }
-
-    if(parts[0]==="category"){
-      pageCategory(parts[1]||"Movie");
-      return;
-    }
-    if(parts[0]==="detail"){
-      pageDetail(parts[1]);
-      return;
-    }
+    if(!h || h==="home"){ pageHome(); return; }
+    if(parts[0]==="category"){ pageCategory(parts[1]||"Movie"); return; }
+    if(parts[0]==="detail"){ pageDetail(parts[1]); return; }
     if(parts[0]==="watch"){
       const id=parts[1];
       let epId=null;
       if(parts[2]==="ep") epId=parts[3]||null;
-      pageWatch(id,epId);
-      return;
+      pageWatch(id,epId); return;
     }
     if(parts[0]==="search"){
       const q=decodeURIComponent(parts.slice(1).join("/")||"");
-      pageSearch(q);
-      return;
+      pageSearch(q); return;
     }
-    if(parts[0]==="history"){
-      pageHistory();
-      return;
-    }
-
+    if(parts[0]==="history"){ pageHistory(); return; }
     pageHome();
   }
 
-  // INIT
   layout();
   mbPage=document.getElementById("mb-page");
   router();
