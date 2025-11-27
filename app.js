@@ -44,7 +44,7 @@
     sort: "ForYou"
   };
 
-  // in-memory caches for speed
+  // caches
   let homeCache = null;       // { trending, movies, shows }
   const searchCache = {};     // q -> list
   const detailCache = {};     // id -> {...}
@@ -214,32 +214,42 @@
     }catch(e){return [];}
   }
 
+  /* ============ LAYOUT ============ */
   function layout(){
-    const root=document.getElementById("moviebox-app");
+    const root = document.getElementById("moviebox-app");
+    if(!root) return;
+
     root.innerHTML = `
       <div class="mb-shell">
         <div class="mb-sidebar">
           <div class="mb-nav-list">
             <div class="mb-nav-item" data-route="#/home">
-              <span class="icon">🏠</span><span>Home</span>
+              <span class="icon">🏠</span>
+              <span class="text">Home</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/TV">
-              <span class="icon">📺</span><span>TV show</span>
+              <span class="icon">📺</span>
+              <span class="text">TV Show</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Movie">
-              <span class="icon">🎬</span><span>Movie</span>
+              <span class="icon">🎬</span>
+              <span class="text">Movie</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Animation">
-              <span class="icon">🐻</span><span>Animation</span>
+              <span class="icon">🐻</span>
+              <span class="text">Animation</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Sport">
-              <span class="icon">🎮</span><span>Sport Live</span>
+              <span class="icon">🎮</span>
+              <span class="text">Sport Live</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/Novel">
-              <span class="icon">📖</span><span>Novel 🔥</span>
+              <span class="icon">📖</span>
+              <span class="text">Novel 🔥</span>
             </div>
             <div class="mb-nav-item" data-route="#/category/MostWatched">
-              <span class="icon">📊</span><span>Most Watched</span>
+              <span class="icon">📊</span>
+              <span class="text">Most Watched</span>
             </div>
           </div>
         </div>
@@ -264,7 +274,7 @@
           </div>
 
           <div class="container">
-            <!-- DROPDOWN MENU NAV -->
+            <!-- DROPDOWN MENU NAV (for mobile) -->
             <select class="mb-dropdown" id="mb-nav-dropdown">
               <option value="#/home">🏠 Home</option>
               <option value="#/category/TV">📺 TV show</option>
@@ -289,7 +299,11 @@
     root.querySelectorAll(".mb-nav-item").forEach(el=>{
       el.addEventListener("click",()=>{
         const r = el.getAttribute("data-route");
-        if(r) location.hash=r;
+        if(r) {
+          location.hash = r;
+          // close sidebar on mobile when clicked
+          document.body.classList.remove("mb-sidebar-open");
+        }
       });
     });
 
@@ -332,15 +346,17 @@
     }
   }
 
-  let mbPage=null;
+  let mbPage = null;
 
   function setLoading(){
-    mbPage.innerHTML='<div class="loader"></div>';
+    if(!mbPage) mbPage=document.getElementById("mb-page");
+    if(mbPage) mbPage.innerHTML='<div class="loader"></div>';
   }
 
   function highlightNav(route){
     const root=document.getElementById("moviebox-app");
     if(!root) return;
+
     root.querySelectorAll(".mb-nav-item").forEach(el=>{
       if(el.getAttribute("data-route")===route) el.classList.add("active");
       else el.classList.remove("active");
@@ -348,9 +364,9 @@
 
     const navDropdown = document.getElementById("mb-nav-dropdown");
     if(navDropdown){
-      if(route){
+      if(route && navDropdown.querySelector(`option[value="${route}"]`)){
         navDropdown.value = route;
-      }else{
+      } else {
         navDropdown.value = "#/home";
       }
     }
@@ -428,7 +444,10 @@
   }
 
   function renderHome(movies,shows){
-    const trending = currentTrending;
+    if(!mbPage) mbPage=document.getElementById("mb-page");
+    if(!mbPage) return;
+
+    const trending = currentTrending || [];
     const hero = trending[currentHeroIndex] || null;
 
     let heroHTML="";
@@ -582,6 +601,9 @@
     categoryState.language="All";
     categoryState.sort = (typeParam==="MostWatched") ? "Hottest" : "ForYou";
 
+    if(!mbPage) mbPage=document.getElementById("mb-page");
+    if(!mbPage) return;
+
     mbPage.innerHTML = `
       <h1>${esc(typeParam)}</h1>
 
@@ -678,6 +700,9 @@
 
   /* SEARCH PAGE – REAL POST /subject/search */
   function renderSearchPage(q, list){
+    if(!mbPage) mbPage=document.getElementById("mb-page");
+    if(!mbPage) return;
+
     mbPage.innerHTML = `
       <h1>Search: ${esc(q)}</h1>
       <div class="grid">
@@ -736,12 +761,14 @@
       renderSearchPage(q, list);
     })
     .catch(()=>{
-      mbPage.innerHTML = `<p style="color:#aaa">Search failed.</p>`;
+      if(!mbPage) mbPage=document.getElementById("mb-page");
+      if(mbPage) mbPage.innerHTML = `<p style="color:#aaa">Search failed.</p>`;
     });
   }
 
-  /* DETAIL PAGE – MovieBox-like layout */
+  /* DETAIL PAGE – with detail-rec recommendations */
   function buildDetailSchema(info, cover){
+    info = info || {};
     const typeStr = (info.classify || info.typeName || info.subjectType || "").toLowerCase();
     const isSeries = typeStr.indexOf("tv")!==-1 || typeStr.indexOf("series")!==-1 || typeStr.indexOf("show")!==-1;
     const schema = {
@@ -767,7 +794,11 @@
 
   function pageDetail(id){
     highlightNav("");
-    if(!id){ mbPage.innerHTML="<h2>Missing id</h2>";return;}
+    if(!id){
+      if(!mbPage) mbPage=document.getElementById("mb-page");
+      if(mbPage) mbPage.innerHTML="<h2>Missing id</h2>";
+      return;
+    }
 
     setLoading();
 
@@ -777,7 +808,7 @@
     }
 
     apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
-      const info = detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
+      const info = detailRes && detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
       const episodes = info.episodes || info.episodeList || [];
       const cover = info.cover && info.cover.url ? info.cover.url : "";
 
@@ -799,7 +830,12 @@
 
       buildDetailSchema(info, cover);
 
-      apiGET("/wefeed-h5-bff/web/subject/detail-rec",{subjectId:id,page:1,perPage:12},recRes=>{
+      // IMPORTANT: use GET detail-rec like your example URL
+      apiGET("/wefeed-h5-bff/web/subject/detail-rec",{
+        subjectId:id,
+        page:1,
+        perPage:12
+      },recRes=>{
         const rec = pickItems(recRes);
 
         detailCache[id] = {
@@ -812,11 +848,17 @@
   }
 
   function renderDetailFromCache(id){
+    if(!mbPage) mbPage=document.getElementById("mb-page");
+    if(!mbPage) return;
+
     const c = detailCache[id];
-    if(!c){ mbPage.innerHTML="<h2>Not found</h2>"; return; }
+    if(!c){
+      mbPage.innerHTML="<h2>Not found</h2>";
+      return;
+    }
     const {info, episodes, cover, year, country, genre, score, votesText, rec} = c;
 
-    const epHTML = episodes.length ? `
+    const epHTML = (episodes && episodes.length) ? `
       <div class="detail-episodes-row">
         ${
           episodes.map((e,idx)=>{
@@ -924,12 +966,16 @@
   /* WATCH – LokLok iframe + history */
   function pageWatch(id,epId){
     highlightNav("");
-    if(!id){ mbPage.innerHTML="<h2>Missing id</h2>";return;}
+    if(!id){
+      if(!mbPage) mbPage=document.getElementById("mb-page");
+      if(mbPage) mbPage.innerHTML="<h2>Missing id</h2>";
+      return;
+    }
 
     setLoading();
 
     apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
-      const subject = detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
+      const subject = detailRes && detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
       let slug = subject.detailPath || subject.pagePath || subject.seoUrl || "";
       if(slug && slug.indexOf("/")!==-1){
         const parts=slug.split("/");
@@ -966,6 +1012,9 @@
       });
 
       const epLabel = epId ? ("Episode: "+esc(epId)) : "";
+
+      if(!mbPage) mbPage=document.getElementById("mb-page");
+      if(!mbPage) return;
 
       mbPage.innerHTML=`
         <h1>Watching</h1>
@@ -1011,6 +1060,9 @@
       "numberOfItems":list.length
     });
 
+    if(!mbPage) mbPage=document.getElementById("mb-page");
+    if(!mbPage) return;
+
     if(!list.length){
       mbPage.innerHTML = `
         <h1>Watch history</h1>
@@ -1040,6 +1092,7 @@
     `;
   }
 
+  /* ROUTER */
   function router(){
     mbPage=document.getElementById("mb-page");
     if(!mbPage) return;
@@ -1048,25 +1101,40 @@
     h=h.replace(/^#\//,"");
     const parts=h.split("/");
 
-    if(!h || h==="home"){ pageHome(); return; }
-    if(parts[0]==="category"){ pageCategory(parts[1]||"Movie"); return; }
-    if(parts[0]==="detail"){ pageDetail(parts[1]); return; }
+    if(!h || h==="home"){
+      pageHome();
+      return;
+    }
+
+    if(parts[0]==="category"){
+      pageCategory(parts[1]||"Movie");
+      return;
+    }
+    if(parts[0]==="detail"){
+      pageDetail(parts[1]);
+      return;
+    }
     if(parts[0]==="watch"){
       const id=parts[1];
       let epId=null;
       if(parts[2]==="ep") epId=parts[3]||null;
-      pageWatch(id,epId); return;
+      pageWatch(id,epId);
+      return;
     }
     if(parts[0]==="search"){
       const q=decodeURIComponent(parts.slice(1).join("/")||"");
-      pageSearch(q); return;
+      pageSearch(q);
+      return;
     }
     if(parts[0]==="history"){
-      pageHistory(); return;
+      pageHistory();
+      return;
     }
+
     pageHome();
   }
 
+  // INIT
   layout();
   mbPage=document.getElementById("mb-page");
   router();
