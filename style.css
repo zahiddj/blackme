@@ -57,6 +57,8 @@ header,
   font-size: 15px;
   margin-bottom: 10px;
   outline: none;
+  position: relative;
+  z-index: 20;
 }
 
 .mb-dropdown option {
@@ -234,6 +236,7 @@ header,
 #moviebox-app .container{
   padding:16px 22px 12px;
   overflow-y:auto;
+  overflow: visible !important; /* ★ FIXED: dropdown corner issue */
   background:#0f0f12; /* FIXED */
 }
 
