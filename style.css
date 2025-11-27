@@ -1,6 +1,23 @@
-body{background:#050509;color:#fff;margin:0;font-family:Arial,Helvetica,sans-serif}
-a{text-decoration:none;color:inherit}
-#moviebox-app *{box-sizing:border-box;pointer-events:auto!important}
+/* ===================== GLOBAL ===================== */
+body {
+    background:#0d0d11 !important;
+    color:#fff;
+    margin:0;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+html, body {
+    margin:0 !important;
+    padding:0 !important;
+    background:#0d0d11 !important;
+}
+
+a { text-decoration:none; color:inherit; }
+
+#moviebox-app * {
+    box-sizing:border-box;
+    pointer-events:auto !important;
+}
 
 /* Remove Blogger header / navbar / padding */
 header, 
@@ -29,14 +46,7 @@ header,
     visibility:hidden!important;
 }
 
-/* Reset body/padding */
-html, body {
-    margin:0!important;
-    padding:0!important;
-    background:#050509!important;
-}
-
-/* DROPDOWN MENU */
+/* ===================== DROPDOWN ===================== */
 .mb-dropdown {
   width: 100%;
   background: #0d0d12;
@@ -54,26 +64,25 @@ html, body {
   color: #fff;
 }
 
-
-/* SHELL LAYOUT */
+/* ===================== SHELL LAYOUT ===================== */
 #moviebox-app .mb-shell{
   display:flex;
   min-height:100vh;
-  background:#050509;
+  background:#0f0f12; /* FIXED */
 }
 
-/* SIDEBAR */
+/* ===================== SIDEBAR ===================== */
 #moviebox-app .mb-sidebar{
   width:235px;
-  background:#050509;
+  background:#0f0f12; /* FIXED */
   border-right:1px solid rgba(255,255,255,0.06);
   padding:10px 10px 14px;
   display:flex;
   flex-direction:column;
 }
-#moviebox-app .mb-nav-list{
-  margin-top:4px;
-}
+
+#moviebox-app .mb-nav-list{ margin-top:4px; }
+
 #moviebox-app .mb-nav-item{
   display:flex;
   align-items:center;
@@ -85,6 +94,7 @@ html, body {
   cursor:pointer;
   margin-bottom:4px;
 }
+
 #moviebox-app .mb-nav-item span.icon{
   width:26px;height:26px;
   display:flex;
@@ -95,18 +105,21 @@ html, body {
   background:transparent;
   color:#d0d0e5;
 }
+
 #moviebox-app .mb-nav-item.active{
   background:#15161f;
 }
+
 #moviebox-app .mb-nav-item.active span.icon{
   background:#16e27a;
   color:#050509;
 }
+
 #moviebox-app .mb-nav-item:hover{
   background:#10101a;
 }
 
-/* MAIN */
+/* ===================== MAIN AREA ===================== */
 #moviebox-app .mb-main-wrap{
   flex:1;
   display:flex;
@@ -114,56 +127,57 @@ html, body {
   overflow:hidden;
 }
 
-/* TOP HEADER */
+/* ===================== TOP HEADER ===================== */
 #moviebox-app .header{
   height:64px;
   padding:10px 22px;
   display:flex;
   align-items:center;
   gap:18px;
-  background:rgba(7,7,9,0.96);
+  background:rgba(15,15,20,0.96); /* FIXED */
   border-bottom:1px solid rgba(255,255,255,0.05);
   backdrop-filter:blur(16px);
 }
+
 #moviebox-app .header-logo{
   display:flex;
   align-items:center;
   gap:10px;
 }
+
 #moviebox-app .logo-burger{
   width:30px;height:30px;
   border-radius:8px;
   background:#12131c;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   font-size:18px;
 }
+
 #moviebox-app .logo-icon{
   width:32px;height:32px;
   border-radius:10px;
   background:linear-gradient(135deg,#00f0ff,#00ff7b);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:17px;
-  font-weight:900;
-  color:#050509;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:900;color:#050509;
 }
+
 #moviebox-app .logo-text{
   font-weight:900;
   font-size:20px;
 }
+
 #moviebox-app .header-search{
   flex:1;
   display:flex;
   justify-content:center;
 }
+
 #moviebox-app .search-box{
   position:relative;
   max-width:640px;
   width:100%;
 }
+
 #moviebox-app .search-input{
   width:100%;
   padding:11px 44px 11px 16px;
@@ -174,9 +188,11 @@ html, body {
   color:#fff;
   font-size:14px;
 }
+
 #moviebox-app .search-input::placeholder{
   color:#9b9bb0;
 }
+
 #moviebox-app .search-icon{
   position:absolute;
   right:16px;
@@ -186,10 +202,12 @@ html, body {
   opacity:.8;
   cursor:pointer;
 }
+
 #moviebox-app .header-actions{
   display:flex;
   gap:10px;
 }
+
 #moviebox-app .btn-header{
   padding:8px 16px;
   border-radius:999px;
@@ -200,21 +218,26 @@ html, body {
   align-items:center;
   gap:6px;
 }
+
 #moviebox-app .btn-download{
   background:linear-gradient(135deg,#00c6ff,#00ff7b);
   color:#000;
   font-weight:600;
 }
+
 #moviebox-app .btn-history{
   background:#2c2d36;
   color:#fff;
 }
 
-/* CONTENT + FOOTER */
+/* ===================== CONTENT ===================== */
 #moviebox-app .container{
   padding:16px 22px 12px;
   overflow-y:auto;
+  background:#0f0f12; /* FIXED */
 }
+
+/* ===================== FOOTER ===================== */
 #moviebox-app .footer{
   text-align:center;
   color:#777;
@@ -224,7 +247,7 @@ html, body {
   border-top:1px solid rgba(255,255,255,.06);
 }
 
-/* HERO */
+/* ===================== HERO ===================== */
 #moviebox-app .hero{
   position:relative;
   height:320px;
@@ -232,16 +255,19 @@ html, body {
   overflow:hidden;
   margin-bottom:16px;
 }
+
 #moviebox-app .hero-bg{
   position:absolute;inset:0;
   background-size:cover;background-position:center;
   filter:blur(22px) brightness(.4);
   transform:scale(1.2);
 }
+
 #moviebox-app .hero-overlay{
   position:absolute;inset:0;
   background:linear-gradient(90deg,rgba(0,0,0,.95),rgba(0,0,0,.3),rgba(0,0,0,1));
 }
+
 #moviebox-app .hero-inner{
   position:relative;
   display:flex;
@@ -250,21 +276,25 @@ html, body {
   height:100%;
   padding:26px 30px;
 }
+
 #moviebox-app .hero-poster img{
   width:170px;height:240px;border-radius:16px;
   object-fit:cover;
   box-shadow:0 12px 35px rgba(0,0,0,.9);
 }
+
 #moviebox-app .hero-title{
   font-size:26px;
   font-weight:800;
   margin-bottom:6px;
 }
+
 #moviebox-app .hero-meta{
   font-size:13px;
   color:#ccc;
   margin-bottom:8px;
 }
+
 #moviebox-app .hero-controls{
   position:absolute;
   right:24px;
@@ -273,6 +303,7 @@ html, body {
   align-items:center;
   gap:10px;
 }
+
 #moviebox-app .hero-arrow{
   width:34px;height:34px;
   border-radius:999px;
@@ -281,69 +312,47 @@ html, body {
   cursor:pointer;
   font-size:17px;
 }
+
 #moviebox-app .hero-dots{
-  display:flex;
-  gap:6px;
+  display:flex;gap:6px;
 }
+
 #moviebox-app .hero-dot{
   width:8px;height:8px;border-radius:999px;
   background:rgba(255,255,255,.35);
 }
+
 #moviebox-app .hero-dot.active{
   background:#fff;
 }
 
-/* SECTION + GRID */
-#moviebox-app .section-title{
-  font-size:17px;
-  margin:8px 0 10px;
-}
+/* ===================== GRID ===================== */
 #moviebox-app .grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
   gap:16px;
 }
+
 #moviebox-app .card{
   background:#111;
   border-radius:12px;
   padding:8px;
 }
+
 #moviebox-app .card img{
   width:100%;
   height:210px;
   object-fit:cover;
   border-radius:10px;
 }
+
 #moviebox-app .card-title{
   text-align:center;
   margin-top:6px;
   font-size:14px;
 }
 
-/* GENERIC BUTTONS */
-#moviebox-app .btn{
-  display:inline-block;
-  padding:9px 18px;
-  border-radius:999px;
-  background:#16e27a;
-  color:#000;
-  font-weight:600;
-  font-size:14px;
-  border:none;
-  cursor:pointer;
-}
-#moviebox-app .btn-secondary{
-  display:inline-block;
-  padding:8px 16px;
-  border-radius:999px;
-  background:#2c2d36;
-  color:#fff;
-  font-size:13px;
-  border:none;
-  cursor:pointer;
-}
-
-/* PLAYER */
+/* ===================== PLAYER ===================== */
 #moviebox-app .player-wrapper{
   width:100%;
   height:80vh;
@@ -351,6 +360,7 @@ html, body {
   border-radius:14px;
   background:#000;
 }
+
 #moviebox-app .player-iframe{
   width:100%;
   height:100%;
@@ -362,10 +372,11 @@ html, body {
   display:none;
 }
 
-/* FILTER */
+/* ===================== FILTER PANEL ===================== */
 #moviebox-app .mb-filter-panel{
   margin:6px 0 18px;
 }
+
 #moviebox-app .mb-filter-row{
   margin-bottom:10px;
   display:flex;
@@ -373,18 +384,21 @@ html, body {
   gap:14px;
   flex-wrap:wrap;
 }
+
 #moviebox-app .mb-filter-label{
   width:80px;
   font-size:13px;
   color:#e0e0ef;
   padding-top:3px;
 }
+
 #moviebox-app .mb-filter-options{
   flex:1;
   display:flex;
   flex-wrap:wrap;
   gap:6px 12px;
 }
+
 #moviebox-app .mb-filter-pill{
   padding:4px 12px;
   border-radius:999px;
@@ -393,176 +407,89 @@ html, body {
   color:#e0e0ef;
   background:transparent;
 }
+
 #moviebox-app .mb-filter-pill.active{
   background:#fff;
   color:#000;
   font-weight:600;
 }
 
-/* DETAIL PAGE */
+/* ===================== DETAIL PAGE ===================== */
 #moviebox-app .detail-layout{
   display:flex;
   gap:26px;
   align-items:flex-start;
 }
-#moviebox-app .detail-main{
-  flex:1;
-}
-#moviebox-app .detail-right{
-  width:220px;
-}
+
+#moviebox-app .detail-main{ flex:1; }
+
+#moviebox-app .detail-right{ width:220px; }
+
 #moviebox-app .detail-top{
   display:flex;
   gap:20px;
 }
+
 #moviebox-app .detail-poster{
   width:170px;
   height:240px;
   border-radius:10px;
   object-fit:cover;
 }
-#moviebox-app .detail-info{
-  flex:1;
-}
+
+#moviebox-app .detail-info{ flex:1; }
+
 #moviebox-app .detail-title{
   font-size:28px;
   font-weight:800;
   margin-bottom:6px;
 }
+
 #moviebox-app .detail-meta-line{
   font-size:13px;
   color:#ccc;
   margin-bottom:10px;
 }
+
 #moviebox-app .detail-desc{
   font-size:14px;
   color:#eee;
   margin:0 0 14px;
 }
+
 #moviebox-app .detail-buttons{
   display:flex;
   gap:10px;
   margin-bottom:12px;
 }
-#moviebox-app .btn-watch-main{
+
+.btn-watch-main{
   background:#16e27a;
   color:#000;
   font-weight:700;
 }
-#moviebox-app .btn-watch-app{
+
+.btn-watch-app{
   background:#2c2d36;
 }
-#moviebox-app .detail-social-row{
+
+.detail-social-row{
   display:flex;
   gap:8px;
-  align-items:center;
   font-size:12px;
   color:#ccc;
 }
-#moviebox-app .detail-social-pill{
+
+.detail-social-pill{
   padding:4px 7px;
   border-radius:6px;
   background:#20212b;
   font-size:11px;
 }
 
-/* EPISODES */
-#moviebox-app .detail-tabs{
-  margin-top:22px;
-  display:flex;
-  gap:20px;
-  border-bottom:1px solid rgba(255,255,255,0.08);
-}
-#moviebox-app .detail-tab{
-  padding:8px 0;
-  font-size:14px;
-  cursor:pointer;
-  position:relative;
-  color:#ccc;
-}
-#moviebox-app .detail-tab.active{
-  color:#fff;
-}
-#moviebox-app .detail-tab.active::after{
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:-1px;
-  height:2px;
-  background:#16e27a;
-}
-#moviebox-app .detail-section{
-  padding-top:14px;
-}
-#moviebox-app .detail-episodes-row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-}
-#moviebox-app .detail-ep-pill{
-  padding:6px 12px;
-  border-radius:999px;
-  background:#1b1c26;
-  font-size:13px;
-  cursor:pointer;
-}
-#moviebox-app .detail-ep-pill:hover{
-  background:#262738;
-}
-
-/* RATING */
-#moviebox-app .rating-box{
-  background:#111219;
-  border-radius:14px;
-  padding:16px 14px;
-  text-align:center;
-}
-#moviebox-app .rating-label{
-  font-size:13px;
-  color:#aaa;
-  margin-bottom:6px;
-}
-#moviebox-app .rating-score-row{
-  display:flex;
-  justify-content:center;
-  align-items:flex-end;
-  gap:4px;
-}
-#moviebox-app .rating-score{
-  font-size:28px;
-  font-weight:800;
-}
-#moviebox-app .rating-outof{
-  font-size:13px;
-  color:#aaa;
-  margin-bottom:4px;
-}
-#moviebox-app .rating-star{
-  font-size:20px;
-  color:#f9d545;
-  margin-right:4px;
-}
-#moviebox-app .rating-votes{
-  font-size:12px;
-  color:#aaa;
-  margin-top:6px;
-}
-
-/* LOADER */
-#moviebox-app .loader{
-  width:32px;height:32px;
-  border:4px solid rgba(255,255,255,0.2);
-  border-top-color:#e50914;
-  border-radius:50%;
-  animation:mb-spin .9s linear infinite;
-  margin:40px auto;
-}
-@keyframes mb-spin{to{transform:rotate(360deg)}}
-
-/* RESPONSIVE */
+/* ===================== RESPONSIVE ===================== */
 @media(max-width:900px){
-  #moviebox-app .mb-shell{flex-direction:column;}
+  #moviebox-app .mb-shell{ flex-direction:column; }
   #moviebox-app .mb-sidebar{
     width:100%;
     flex-direction:row;
@@ -570,12 +497,10 @@ html, body {
     border-right:none;
     border-bottom:1px solid rgba(255,255,255,0.06);
   }
-  #moviebox-app .mb-nav-item{white-space:nowrap;}
-  #moviebox-app .header{padding:8px 10px;}
-  #moviebox-app .hero{height:260px;}
-  #moviebox-app .detail-layout{
-    flex-direction:column;
-  }
+  #moviebox-app .mb-nav-item{ white-space:nowrap; }
+  #moviebox-app .header{ padding:8px 10px; }
+  #moviebox-app .hero{ height:260px; }
+  #moviebox-app .detail-layout{ flex-direction:column; }
   #moviebox-app .detail-right{
     width:100%;
     margin-top:14px;
