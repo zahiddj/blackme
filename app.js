@@ -50,6 +50,8 @@
   let homeCache = null;    // { trending, movies, shows }
   const searchCache = {};  // q -> list
 
+  let mbPage = null;
+
   /* ===================== SEO ===================== */
   function updateSEO(config){
     config = config || {};
@@ -145,12 +147,14 @@
       "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
     }[m]));
   }
+
   function cleanTitle(raw){
     const t = (raw || "").toString().trim();
     if(!t) return "Unknown Title";
-    if(t.length>60) return t.slice(0,57)+"...";
+    if(t.length > 60) return t.slice(0,57) + "...";
     return t;
   }
+
   function getTitle(m){
     return cleanTitle(
       m.title || m.subTitle || m.name || m.seriesName || m.showName || m.videoTitle
@@ -170,9 +174,9 @@
     const sp = new URLSearchParams(params || {});
     const url = API + path + (sp.toString() ? ("?" + sp.toString()) : "");
     fetch(url,{headers:COMMON_HEADERS})
-      .then(r=>r.json())
+      .then(r => r.json())
       .then(cb)
-      .catch(()=>cb({}));
+      .catch(() => cb({}));
   }
 
   function apiPOST(path, body, cb){
@@ -180,7 +184,10 @@
       method:"POST",
       headers:Object.assign({},COMMON_HEADERS,{"Content-Type":"application/json"}),
       body:JSON.stringify(body || {})
-    }).then(r=>r.json()).then(cb).catch(()=>cb({}));
+    })
+    .then(r => r.json())
+    .then(cb)
+    .catch(() => cb({}));
   }
 
   /* ===================== HISTORY ===================== */
@@ -193,13 +200,30 @@
       localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
     }catch(e){}
   }
+
   function readHistory(){
     try{
       return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-    }catch(e){return [];}
+    }catch(e){ return []; }
   }
 
-  /* ===================== LAYOUT ===================== */
+  function setLoading(){
+    mbPage = document.getElementById("mb-page");
+    if(mbPage){
+      mbPage.innerHTML = '<div class="loader"></div>';
+    }
+  }
+
+  function highlightNav(route){
+    const root = document.getElementById("moviebox-app");
+    if(!root) return;
+    root.querySelectorAll(".mb-nav-item").forEach(el=>{
+      if(el.getAttribute("data-route") === route) el.classList.add("active");
+      else el.classList.remove("active");
+    });
+  }
+
+  /* ===================== LAYOUT (SIDEBAR + HEADER) ===================== */
   function layout(){
     const root = document.getElementById("moviebox-app");
     if(!root) return;
@@ -273,28 +297,39 @@
       });
     });
 
-    // burger → mobile drawer / desktop collapse
+    // burger for desktop collapse / mobile drawer
     const burger = root.querySelector(".logo-burger");
     const sidebar = root.querySelector(".mb-sidebar");
     const logoText = root.querySelector(".logo-text");
-    if(burger && sidebar){
+
+    if(burger){
       burger.addEventListener("click",()=>{
+        // Mobile
         if(window.innerWidth <= 900){
           document.body.classList.toggle("mb-sidebar-open");
+          return;
+        }
+
+        // Desktop collapse
+        const collapsed = document.body.classList.toggle("mb-sidebar-collapsed");
+        if(collapsed){
+          sidebar.style.width = "64px";
+          if(logoText) logoText.style.display = "none";
+          root.querySelectorAll(".mb-sidebar .text").forEach(t => t.style.display = "none");
         }else{
-          const collapsed = document.body.classList.toggle("mb-sidebar-collapsed");
-          if(collapsed){
-            sidebar.style.width = "64px";
-            if(logoText) logoText.style.display = "none";
-            root.querySelectorAll(".mb-sidebar .text").forEach(t=>t.style.display="none");
-          }else{
-            sidebar.style.width = "235px";
-            if(logoText) logoText.style.display = "";
-            root.querySelectorAll(".mb-sidebar .text").forEach(t=>t.style.display="");
-          }
+          sidebar.style.width = "235px";
+          if(logoText) logoText.style.display = "";
+          root.querySelectorAll(".mb-sidebar .text").forEach(t => t.style.display = "");
         }
       });
     }
+
+    // keep state on resize
+    window.addEventListener("resize", ()=>{
+      if(window.innerWidth > 900){
+        document.body.classList.remove("mb-sidebar-open");
+      }
+    });
 
     // search
     const sInput = document.getElementById("mb-search-input");
@@ -313,22 +348,6 @@
     // history button
     const hBtn = document.getElementById("mb-btn-history");
     if(hBtn) hBtn.onclick = ()=>{ location.hash = "#/history"; };
-  }
-
-  let mbPage = null;
-
-  function setLoading(){
-    mbPage = document.getElementById("mb-page");
-    if(mbPage) mbPage.innerHTML = '<div class="loader"></div>';
-  }
-
-  function highlightNav(route){
-    const root = document.getElementById("moviebox-app");
-    if(!root) return;
-    root.querySelectorAll(".mb-nav-item").forEach(el=>{
-      if(el.getAttribute("data-route") === route) el.classList.add("active");
-      else el.classList.remove("active");
-    });
   }
 
   /* ===================== HOME ===================== */
@@ -411,7 +430,7 @@
 
     let heroHTML = "";
     if(hero){
-      const cover = hero.cover && hero.cover.url ? hero.cover.url : "";
+      const cover = hero.cover && hero.cover.url ? hero.cover.url : (hero.coverUrl || "");
       const dots=[];
       const maxDots = Math.min(trending.length,6);
       for(let i=0;i<maxDots;i++){
@@ -452,51 +471,57 @@
       <div>
         <div class="section-title">🔥 Trending</div>
         <div class="grid">
-          ${trending.map(m=>{
-            const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
-            return `
-              <a href="#/detail/${m.subjectId}">
-                <div class="card">
-                  <img src="${c}">
-                  <div class="card-title">${getTitle(m)}</div>
-                </div>
-              </a>
-            `;
-          }).join("")}
+          ${
+            trending.map(m=>{
+              const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
+              return `
+                <a href="#/detail/${m.subjectId}">
+                  <div class="card">
+                    <img src="${c}">
+                    <div class="card-title">${getTitle(m)}</div>
+                  </div>
+                </a>
+              `;
+            }).join("")
+          }
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div class="section-title">🎞 Movies</div>
         <div class="grid">
-          ${movies.map(m=>{
-            const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
-            return `
-              <a href="#/detail/${m.subjectId}">
-                <div class="card">
-                  <img src="${c}">
-                  <div class="card-title">${getTitle(m)}</div>
-                </div>
-              </a>
-            `;
-          }).join("")}
+          ${
+            movies.map(m=>{
+              const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
+              return `
+                <a href="#/detail/${m.subjectId}">
+                  <div class="card">
+                    <img src="${c}">
+                    <div class="card-title">${getTitle(m)}</div>
+                  </div>
+                </a>
+              `;
+            }).join("")
+          }
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div class="section-title">📺 TV Shows</div>
         <div class="grid">
-          ${shows.map(m=>{
-            const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
-            return `
-              <a href="#/detail/${m.subjectId}">
-                <div class="card">
-                  <img src="${c}">
-                  <div class="card-title">${getTitle(m)}</div>
-                </div>
-              </a>
-            `;
-          }).join("")}
+          ${
+            shows.map(m=>{
+              const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
+              return `
+                <a href="#/detail/${m.subjectId}">
+                  <div class="card">
+                    <img src="${c}">
+                    <div class="card-title">${getTitle(m)}</div>
+                  </div>
+                </a>
+              `;
+            }).join("")
+          }
         </div>
       </div>
     `;
@@ -536,28 +561,28 @@
   }
 
   function pageCategory(typeParam){
-    highlightNav("#/category/"+typeParam);
+    highlightNav("#/category/" + typeParam);
 
     updateSEO({
-      title:esc(typeParam)+" – Browse | BlackMeMovie",
-      description:"Browse "+typeParam+" content on BlackMeMovie in HD.",
-      image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-      url:location.href
+      title: esc(typeParam) + " – Browse | BlackMeMovie",
+      description: "Browse " + typeParam + " content on BlackMeMovie in HD.",
+      image: "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      url: location.href
     });
 
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"CollectionPage",
-      "name": typeParam+" – BlackMeMovie",
+      "name": typeParam + " – BlackMeMovie",
       "url":location.href
     });
 
     const classify = mapTypeToClassify(typeParam);
     categoryState.type = classify;
-    categoryState.genre="All";
-    categoryState.country="All";
-    categoryState.year="All";
-    categoryState.language="All";
+    categoryState.genre = "All";
+    categoryState.country = "All";
+    categoryState.year = "All";
+    categoryState.language = "All";
     categoryState.sort = (typeParam === "MostWatched") ? "Hottest" : "ForYou";
 
     mbPage = document.getElementById("mb-page");
@@ -726,10 +751,10 @@
     });
   }
 
-  /* ===================== DETAIL ===================== */
+  /* ===================== DETAIL (MATCHES REAL API) ===================== */
   function buildDetailSchema(info, cover){
     info = info || {};
-    const typeStr = (info.classify || info.typeName || info.subjectType || "").toLowerCase();
+    const typeStr = (info.classify || info.typeName || info.subjectType || "").toString().toLowerCase();
     const isSeries = typeStr.includes("tv") || typeStr.includes("series") || typeStr.includes("show");
 
     const schema = {
@@ -739,7 +764,7 @@
       "image": cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
       "description": info.description || info.desc || "",
       "datePublished": info.releaseDate || info.year || "",
-      "genre": info.genre || (Array.isArray(info.genreList)? info.genreList.join(", ") : "")
+      "genre": info.genre || (Array.isArray(info.genreList) ? info.genreList.join(", ") : "")
     };
 
     const rawScore = info.score || info.imdbRatingValue || info.imdbScore;
@@ -756,18 +781,21 @@
   }
 
   function pageDetail(id){
+    highlightNav("");
     setLoading();
 
     apiGET(DETAIL_ENDPOINT, { subjectId:id }, res => {
       const d = res && res.data && res.data.subject ? res.data.subject : {};
 
       const title   = d.title || "Unknown Title";
-      const cover   = (d.cover && d.cover.url) || "";
+      const cover   = (d.cover && d.cover.url) || d.coverUrl || "";
       const desc    = d.description || "";
       const release = d.releaseDate || "";
       const genre   = d.genre || "";
       const country = d.countryName || "";
       const detailPath = d.detailPath || "";
+
+      buildDetailSchema(d, cover);
 
       updateSEO({
         title: title + " – Watch Online | BlackMeMovie",
@@ -775,12 +803,12 @@
         image: cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
         url: location.href
       });
-      buildDetailSchema(d, cover);
 
       apiGET(DETAIL_REC_ENDPOINT,
         { subjectId:id, page:1, perPage:12 },
         recRes => {
-          const rec = recRes && recRes.data && Array.isArray(recRes.data.items)
+
+          const rec = (recRes && recRes.data && Array.isArray(recRes.data.items))
             ? recRes.data.items
             : [];
 
@@ -789,20 +817,23 @@
 
           mbPage.innerHTML = `
             <div class="detail-layout">
+
               <div class="detail-main">
                 <div class="detail-top">
                   <img src="${cover}" class="detail-poster">
                   <div class="detail-info">
-                    <div class="detail-title">${title}</div>
+                    <div class="detail-title">${esc(title)}</div>
+
                     <div class="detail-meta-line">
-                      <b>Genre:</b> ${genre} &nbsp; • &nbsp;
-                      <b>Country:</b> ${country} &nbsp; • &nbsp;
-                      <b>Release:</b> ${release}
+                      <b>Genre:</b> ${esc(genre)} &nbsp; • &nbsp;
+                      <b>Country:</b> ${esc(country)} &nbsp; • &nbsp;
+                      <b>Release:</b> ${esc(release)}
                     </div>
-                    <p class="detail-desc">${desc}</p>
+
+                    <p class="detail-desc">${esc(desc)}</p>
+
                     <div class="detail-buttons">
-                      <a class="btn btn-watch-main"
-                         href="#/watch/${id}">
+                      <a class="btn btn-watch-main" href="#/watch/${id}">
                         ▶ Watch
                       </a>
                     </div>
@@ -819,7 +850,7 @@
                         <a href="#/detail/${m.subjectId}">
                           <div class="card">
                             <img src="${c}">
-                            <div class="card-title">${t}</div>
+                            <div class="card-title">${esc(t)}</div>
                           </div>
                         </a>
                       `;
@@ -827,6 +858,7 @@
                   }
                 </div>
               </div>
+
             </div>
           `;
         }
@@ -834,26 +866,23 @@
     });
   }
 
-  /* ===================== WATCH – LokLok iframe, NO debug text ===================== */
-  function pageWatch(id, epId){
+  /* ===================== WATCH (LokLok iframe, URL HIDDEN) ===================== */
+  function pageWatch(id){
     highlightNav("");
-    if(!id){
-      mbPage = document.getElementById("mb-page");
-      if(mbPage) mbPage.innerHTML = "<h2>Missing id</h2>";
-      return;
-    }
-
     setLoading();
 
-    apiGET(DETAIL_ENDPOINT,{ subjectId:id }, res=>{
+    apiGET(DETAIL_ENDPOINT, { subjectId:id }, res => {
       const subject = res && res.data && res.data.subject ? res.data.subject : {};
-      const title = subject.title || "Unknown Title";
-      const cover = subject.cover && subject.cover.url ? subject.cover.url : "";
 
-      let slug = subject.detailPath || subject.pagePath || subject.seoUrl || "";
-      if(!slug){
-        slug = "movie-" + id;
+      const title = subject.title || "Unknown Title";
+      const cover = (subject.cover && subject.cover.url) || subject.coverUrl || "";
+      let slug = subject.detailPath || subject.detail_path || "";
+
+      if(slug && slug.indexOf("/") !== -1){
+        const parts = slug.split("/");
+        slug = parts[parts.length - 1];
       }
+      if(!slug) slug = "movie-" + id;
 
       const loklokUrl =
         "https://lok-lok.cc/spa/videoPlayPage/movies/" + encodeURIComponent(slug) +
@@ -884,11 +913,8 @@
       mbPage = document.getElementById("mb-page");
       if(!mbPage) return;
 
-      const epLabel = epId ? ("Episode: " + esc(epId)) : "";
-
       mbPage.innerHTML = `
-        <h1>Watching – ${esc(title)}</h1>
-        ${epLabel ? `<div class="watch-ep-label">${epLabel}</div>` : ""}
+        <h1>Watching: ${esc(title)}</h1>
 
         <div class="player-wrapper">
           <iframe
@@ -900,7 +926,7 @@
           </iframe>
         </div>
 
-        <a class="btn" href="#/detail/${id}" style="margin-top:12px;display:inline-block;">⬅ Back</a>
+        <a class="btn" href="#/detail/${id}" style="margin-top:10px;display:inline-block;">⬅ Back</a>
       `;
     });
   }
@@ -908,6 +934,7 @@
   /* ===================== HISTORY PAGE ===================== */
   function pageHistory(){
     highlightNav("");
+
     const list = readHistory();
 
     updateSEO({
@@ -969,20 +996,32 @@
     h = h.replace(/^#\//,"");
     const parts = h.split("/");
 
-    if(!h || h === "home"){ pageHome(); return; }
-    if(parts[0] === "category"){ pageCategory(parts[1] || "Movie"); return; }
-    if(parts[0] === "detail"){ pageDetail(parts[1]); return; }
+    if(!h || h === "home"){
+      pageHome();
+      return;
+    }
+    if(parts[0] === "category"){
+      pageCategory(parts[1] || "Movie");
+      return;
+    }
+    if(parts[0] === "detail"){
+      pageDetail(parts[1]);
+      return;
+    }
     if(parts[0] === "watch"){
       const id = parts[1];
-      let epId = null;
-      if(parts[2] === "ep") epId = parts[3] || null;
-      pageWatch(id,epId); return;
+      pageWatch(id);
+      return;
     }
     if(parts[0] === "search"){
       const q = decodeURIComponent(parts.slice(1).join("/") || "");
-      pageSearch(q); return;
+      pageSearch(q);
+      return;
     }
-    if(parts[0] === "history"){ pageHistory(); return; }
+    if(parts[0] === "history"){
+      pageHistory();
+      return;
+    }
 
     pageHome();
   }
