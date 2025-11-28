@@ -9,6 +9,9 @@
   const HISTORY_KEY = "bm_watch_history";
   const PER_PAGE = 24;
 
+  const DETAIL_ENDPOINT = "/wefeed-h5-bff/web/subject/detail";
+  const DETAIL_REC_ENDPOINT = "/wefeed-h5-bff/web/subject/detail-rec";
+
   const GENRE_OPTIONS = [
     "All","Action","Adventure","Animation","Biography","Comedy","Crime",
     "Documentary","Drama","Family","Fantasy","Film-Noir","Game-Show","History",
@@ -139,7 +142,7 @@
     );
   }
 
-  // IMPORTANT: now supports data.items (your /detail-rec JSON)
+  // handles data.items, data.subjectList, data.list
   function pickItems(res){
     if(!res || !res.data) return [];
     const d = res.data;
@@ -259,7 +262,6 @@
         const r = el.getAttribute("data-route");
         if(r){
           location.hash = r;
-          // close mobile drawer if open
           document.body.classList.remove("mb-sidebar-open");
         }
       });
@@ -274,15 +276,13 @@
       });
     }
 
-    // burger: desktop collapsible, mobile drawer
+    // burger: desktop collapse, mobile drawer
     const burger = root.querySelector(".logo-burger");
     if(burger){
       burger.addEventListener("click",()=>{
         if(window.innerWidth <= 900){
-          // mobile: slide drawer
           document.body.classList.toggle("mb-sidebar-open");
         }else{
-          // desktop: collapse/expand (icon only)
           document.body.classList.toggle("mb-sidebar-collapsed");
         }
       });
@@ -724,7 +724,6 @@
       "genre":info.genre || (Array.isArray(info.genres)?info.genres.join(", "):"")
     };
 
-    // support imdbRatingValue / imdbRatingCount from API
     const rawScore = info.score || info.imdbRatingValue || info.imdbScore;
     const ratingCount = info.scoreCount || info.imdbRatingCount || info.ratingCount || info.voteCount;
     if(rawScore){
@@ -751,14 +750,17 @@
       return;
     }
 
-    apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
-      // SUPPORT BOTH: data.subject AND data.items[0]
-      const info = (detailRes && detailRes.data && (detailRes.data.subject || (detailRes.data.items && detailRes.data.items[0]))) || {};
+    // MAIN DETAIL CALL
+    apiGET(DETAIL_ENDPOINT,{subjectId:id},detailRes=>{
+      const data = detailRes && detailRes.data ? detailRes.data : {};
+      const info = data.subject || (Array.isArray(data.items) && data.items[0]) || {};
+
       const episodes =
         info.episodes ||
         info.episodeList ||
         info.seriesEpisodes ||
         [];
+
       const cover = info.cover && info.cover.url ? info.cover.url : "";
       const year = info.releaseDate || info.year || "";
       const country = info.countryName || "";
@@ -777,8 +779,8 @@
       });
       buildDetailSchema(info,cover);
 
-      // /detail-rec => your JSON (data.items[…])
-      apiGET("/wefeed-h5-bff/web/subject/detail-rec",{
+      // RECOMMENDATIONS
+      apiGET(DETAIL_REC_ENDPOINT,{
         subjectId:id,page:1,perPage:12
       },recRes=>{
         const rec=pickItems(recRes);
@@ -906,8 +908,10 @@
       return;
     }
     setLoading();
-    apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
-      const subject=detailRes && detailRes.data && (detailRes.data.subject || (detailRes.data.items && detailRes.data.items[0])) || {};
+
+    apiGET(DETAIL_ENDPOINT,{subjectId:id},detailRes=>{
+      const data = detailRes && detailRes.data ? detailRes.data : {};
+      const subject = data.subject || (Array.isArray(data.items) && data.items[0]) || {};
       let slug=subject.detailPath || subject.pagePath || subject.seoUrl || "";
       if(slug && slug.indexOf("/")!==-1){
         const parts=slug.split("/");
