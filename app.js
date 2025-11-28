@@ -49,7 +49,6 @@
 
   let homeCache = null;    // { trending, movies, shows }
   const searchCache = {};  // q -> list
-  const detailCache = {};  // id -> { info, cover, genre,... }
 
   /* ===================== SEO ===================== */
   function updateSEO(config){
@@ -274,14 +273,25 @@
       });
     });
 
-    // burger for desktop collapse / mobile drawer
+    // burger → mobile drawer / desktop collapse
     const burger = root.querySelector(".logo-burger");
-    if(burger){
+    const sidebar = root.querySelector(".mb-sidebar");
+    const logoText = root.querySelector(".logo-text");
+    if(burger && sidebar){
       burger.addEventListener("click",()=>{
         if(window.innerWidth <= 900){
           document.body.classList.toggle("mb-sidebar-open");
         }else{
-          document.body.classList.toggle("mb-sidebar-collapsed");
+          const collapsed = document.body.classList.toggle("mb-sidebar-collapsed");
+          if(collapsed){
+            sidebar.style.width = "64px";
+            if(logoText) logoText.style.display = "none";
+            root.querySelectorAll(".mb-sidebar .text").forEach(t=>t.style.display="none");
+          }else{
+            sidebar.style.width = "235px";
+            if(logoText) logoText.style.display = "";
+            root.querySelectorAll(".mb-sidebar .text").forEach(t=>t.style.display="");
+          }
         }
       });
     }
@@ -716,7 +726,7 @@
     });
   }
 
-  /* ===================== DETAIL (MATCHES main.py LOGIC) ===================== */
+  /* ===================== DETAIL ===================== */
   function buildDetailSchema(info, cover){
     info = info || {};
     const typeStr = (info.classify || info.typeName || info.subjectType || "").toLowerCase();
@@ -748,151 +758,152 @@
   function pageDetail(id){
     setLoading();
 
-    apiGET("/wefeed-h5-bff/web/subject/detail", { subjectId:id }, res => {
+    apiGET(DETAIL_ENDPOINT, { subjectId:id }, res => {
+      const d = res && res.data && res.data.subject ? res.data.subject : {};
 
-        const d = res?.data?.subject || {};
+      const title   = d.title || "Unknown Title";
+      const cover   = (d.cover && d.cover.url) || "";
+      const desc    = d.description || "";
+      const release = d.releaseDate || "";
+      const genre   = d.genre || "";
+      const country = d.countryName || "";
+      const detailPath = d.detailPath || "";
 
-        const title   = d.title || "Unknown Title";
-        const cover   = (d.cover && d.cover.url) || "";
-        const desc    = d.description || "";
-        const release = d.releaseDate || "";
-        const genre   = d.genre || "";
-        const country = d.countryName || "";
-        const detailPath = d.detailPath || "";
+      updateSEO({
+        title: title + " – Watch Online | BlackMeMovie",
+        description: desc || ("Watch " + title + " online in HD on BlackMeMovie."),
+        image: cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+        url: location.href
+      });
+      buildDetailSchema(d, cover);
 
-        // ⭐ NEW: Stars, Seasons (you can use later)
-        const stars   = res?.data?.stars || [];
-        const seasons = res?.data?.resource?.seasons || [];
+      apiGET(DETAIL_REC_ENDPOINT,
+        { subjectId:id, page:1, perPage:12 },
+        recRes => {
+          const rec = recRes && recRes.data && Array.isArray(recRes.data.items)
+            ? recRes.data.items
+            : [];
 
-        // NOW FIX RECOMMENDATIONS
-        apiGET("/wefeed-h5-bff/web/subject/detail-rec",
-               { subjectId:id, page:1, perPage:12 },
-               recRes => {
+          mbPage = document.getElementById("mb-page");
+          if(!mbPage) return;
 
-            const rec = recRes?.data?.items || [];
-
-            mbPage.innerHTML = `
-                <div class="detail-layout">
-
-                    <div class="detail-main">
-                        <div class="detail-top">
-                            <img src="${cover}" class="detail-poster">
-
-                            <div class="detail-info">
-                                <div class="detail-title">${title}</div>
-
-                                <div class="detail-meta-line">
-                                    <b>Genre:</b> ${genre} &nbsp; • &nbsp;
-                                    <b>Country:</b> ${country} &nbsp; • &nbsp;
-                                    <b>Release:</b> ${release}
-                                </div>
-
-                                <p class="detail-desc">${desc}</p>
-
-                                <div class="detail-buttons">
-                                    <a class="btn btn-watch-main"
-                                       href="#/watch/${id}?path=${detailPath}&title=${encodeURIComponent(title)}">
-                                        ▶ Watch
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h2 class="section-title">Similar</h2>
-                        <div class="grid">
-                            ${
-                                rec.map(m=>{
-                                    const c = m.cover?.url || m.coverUrl || "";
-                                    const t = m.title || "Unknown";
-                                    return `
-                                        <a href="#/detail/${m.subjectId}">
-                                            <div class="card">
-                                                <img src="${c}">
-                                                <div class="card-title">${t}</div>
-                                            </div>
-                                        </a>
-                                    `;
-                                }).join("")
-                            }
-                        </div>
+          mbPage.innerHTML = `
+            <div class="detail-layout">
+              <div class="detail-main">
+                <div class="detail-top">
+                  <img src="${cover}" class="detail-poster">
+                  <div class="detail-info">
+                    <div class="detail-title">${title}</div>
+                    <div class="detail-meta-line">
+                      <b>Genre:</b> ${genre} &nbsp; • &nbsp;
+                      <b>Country:</b> ${country} &nbsp; • &nbsp;
+                      <b>Release:</b> ${release}
                     </div>
-
+                    <p class="detail-desc">${desc}</p>
+                    <div class="detail-buttons">
+                      <a class="btn btn-watch-main"
+                         href="#/watch/${id}">
+                        ▶ Watch
+                      </a>
+                    </div>
+                  </div>
                 </div>
-            `;
-        });
+
+                <h2 class="section-title">Similar</h2>
+                <div class="grid">
+                  ${
+                    rec.map(m=>{
+                      const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
+                      const t = m.title || "Unknown";
+                      return `
+                        <a href="#/detail/${m.subjectId}">
+                          <div class="card">
+                            <img src="${c}">
+                            <div class="card-title">${t}</div>
+                          </div>
+                        </a>
+                      `;
+                    }).join("")
+                  }
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      );
     });
-}
+  }
 
-
-  /* ===================== WATCH (LokLok iframe, NO debug text) ===================== */
- async function loadWatch(subjectId) {
-    try {
-        const detailRes = await fetch(`/api/detail?id=${subjectId}`);
-        const detailData = await detailRes.json();
-
-        const subject = detailData.data.subject;
-        const resource = detailData.data.resource;
-
-        const lokId = subject.subjectId;
-        const lokPath = subject.detailPath;
-
-        if (!lokId || !lokPath) {
-            document.querySelector("#videoWrap").innerHTML =
-                "<p>Error: Missing LokLok detailPath or subjectId</p>";
-            return;
-        }
-
-        // Call LokLok play API
-        const playRes = await fetch(
-            `https://lok-lok.cc/wefeed-h5-bff/web/subject/play?subjectId=${lokId}&se=1&ep=1&detail_path=${lokPath}`,
-            { headers: { "x-source": "web" } }
-        );
-        const playJson = await playRes.json();
-
-        const streams = playJson?.data?.streams || [];
-
-        if (streams.length === 0) {
-            document.querySelector("#videoWrap").innerHTML =
-                "<p>No streams found.</p>";
-            return;
-        }
-
-        // Build quality buttons
-        const btnWrap = document.querySelector("#qualityButtons");
-        btnWrap.innerHTML = "";
-        streams.forEach(s => {
-            let url = "/proxy?url=" + encodeURIComponent(s.url);
-            let btn = document.createElement("button");
-            btn.className = "btn";
-            btn.innerText = s.resolutions || s.quality || "Auto";
-            btn.onclick = () => changeQuality(url);
-            btnWrap.appendChild(btn);
-        });
-
-        // Load default
-        document.querySelector("#player").src =
-            "/proxy?url=" + encodeURIComponent(streams[0].url);
-
-    } catch (err) {
-        document.querySelector("#videoWrap").innerHTML =
-            "<p>Error loading video.</p>";
+  /* ===================== WATCH – LokLok iframe, NO debug text ===================== */
+  function pageWatch(id, epId){
+    highlightNav("");
+    if(!id){
+      mbPage = document.getElementById("mb-page");
+      if(mbPage) mbPage.innerHTML = "<h2>Missing id</h2>";
+      return;
     }
-}
 
-function changeQuality(url) {
-    let v = document.getElementById("player");
-    let t = v.currentTime || 0;
-    v.src = url;
-    v.onloadedmetadata = () => {
-        v.currentTime = t;
-        v.play();
-    };
-}
+    setLoading();
 
-// INIT
-const id = new URLSearchParams(location.search).get("id");
-loadWatch(id);
+    apiGET(DETAIL_ENDPOINT,{ subjectId:id }, res=>{
+      const subject = res && res.data && res.data.subject ? res.data.subject : {};
+      const title = subject.title || "Unknown Title";
+      const cover = subject.cover && subject.cover.url ? subject.cover.url : "";
 
+      let slug = subject.detailPath || subject.pagePath || subject.seoUrl || "";
+      if(!slug){
+        slug = "movie-" + id;
+      }
+
+      const loklokUrl =
+        "https://lok-lok.cc/spa/videoPlayPage/movies/" + encodeURIComponent(slug) +
+        "?id=" + encodeURIComponent(id) +
+        "&type=/movie/detail&lang=en";
+
+      pushHistory({
+        id:id,
+        title:title,
+        cover:cover,
+        ts:Date.now()
+      });
+
+      updateSEO({
+        title: "Watch " + title + " – BlackMeMovie",
+        description: "Streaming " + title + " online in HD on BlackMeMovie.",
+        image: cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+        url: location.href
+      });
+
+      setJSONLD({
+        "@context":"https://schema.org",
+        "@type":"WatchAction",
+        "name":"Watch " + title,
+        "target":location.href
+      });
+
+      mbPage = document.getElementById("mb-page");
+      if(!mbPage) return;
+
+      const epLabel = epId ? ("Episode: " + esc(epId)) : "";
+
+      mbPage.innerHTML = `
+        <h1>Watching – ${esc(title)}</h1>
+        ${epLabel ? `<div class="watch-ep-label">${epLabel}</div>` : ""}
+
+        <div class="player-wrapper">
+          <iframe
+            class="player-iframe"
+            src="${loklokUrl}"
+            allowfullscreen
+            scrolling="no"
+            referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+        </div>
+
+        <a class="btn" href="#/detail/${id}" style="margin-top:12px;display:inline-block;">⬅ Back</a>
+      `;
+    });
+  }
 
   /* ===================== HISTORY PAGE ===================== */
   function pageHistory(){
