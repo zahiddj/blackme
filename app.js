@@ -138,19 +138,24 @@
       m.title || m.subTitle || m.name || m.seriesName || m.showName || m.videoTitle
     );
   }
-  function pickItems(resp){
-    if(!resp || !resp.data) return [];
-    const data = resp.data;
-    if(Array.isArray(data.items)) return data.items;
-    if(Array.isArray(data.subjectList)) return data.subjectList;
-    if(Array.isArray(data.list)) return data.list;
+
+  // IMPORTANT: now supports data.items (your /detail-rec JSON)
+  function pickItems(res){
+    if(!res || !res.data) return [];
+    const d = res.data;
+    if(Array.isArray(d.items)) return d.items;
+    if(Array.isArray(d.subjectList)) return d.subjectList;
+    if(Array.isArray(d.list)) return d.list;
     return [];
   }
+
   function apiGET(path, params, cb){
     const sp = new URLSearchParams(params||{});
     const url = API + path + (sp.toString() ? ("?" + sp.toString()) : "");
     fetch(url,{headers:COMMON_HEADERS})
-      .then(r=>r.json()).then(cb).catch(()=>cb({}));
+      .then(r=>r.json())
+      .then(cb)
+      .catch(()=>cb({}));
   }
   function apiPOST(path, body, cb){
     fetch(API+path,{
@@ -254,6 +259,7 @@
         const r = el.getAttribute("data-route");
         if(r){
           location.hash = r;
+          // close mobile drawer if open
           document.body.classList.remove("mb-sidebar-open");
         }
       });
@@ -268,11 +274,17 @@
       });
     }
 
-    // burger
+    // burger: desktop collapsible, mobile drawer
     const burger = root.querySelector(".logo-burger");
     if(burger){
       burger.addEventListener("click",()=>{
-        document.body.classList.toggle("mb-sidebar-open");
+        if(window.innerWidth <= 900){
+          // mobile: slide drawer
+          document.body.classList.toggle("mb-sidebar-open");
+        }else{
+          // desktop: collapse/expand (icon only)
+          document.body.classList.toggle("mb-sidebar-collapsed");
+        }
       });
     }
 
@@ -711,11 +723,15 @@
       "datePublished":info.releaseDate || info.year || "",
       "genre":info.genre || (Array.isArray(info.genres)?info.genres.join(", "):"")
     };
-    if(info.score){
+
+    // support imdbRatingValue / imdbRatingCount from API
+    const rawScore = info.score || info.imdbRatingValue || info.imdbScore;
+    const ratingCount = info.scoreCount || info.imdbRatingCount || info.ratingCount || info.voteCount;
+    if(rawScore){
       schema.aggregateRating={
         "@type":"AggregateRating",
-        "ratingValue":typeof info.score==="number"?info.score.toFixed(1):info.score,
-        "ratingCount":info.scoreCount || info.ratingCount || info.voteCount || ""
+        "ratingValue":typeof rawScore==="number"?rawScore.toFixed(1):rawScore,
+        "ratingCount":ratingCount || ""
       };
     }
     setJSONLD(schema);
@@ -736,15 +752,21 @@
     }
 
     apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
-      const info = detailRes && detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
-      const episodes = info.episodes || info.episodeList || [];
+      // SUPPORT BOTH: data.subject AND data.items[0]
+      const info = (detailRes && detailRes.data && (detailRes.data.subject || (detailRes.data.items && detailRes.data.items[0]))) || {};
+      const episodes =
+        info.episodes ||
+        info.episodeList ||
+        info.seriesEpisodes ||
+        [];
       const cover = info.cover && info.cover.url ? info.cover.url : "";
       const year = info.releaseDate || info.year || "";
       const country = info.countryName || "";
       const genre = info.genre || (Array.isArray(info.genres)?info.genres.join(", "):"");
-      const rawScore = info.score || info.imdbScore || info.doubanScore || info.ratingScore || "";
+
+      const rawScore = info.score || info.imdbRatingValue || info.imdbScore;
       const score = rawScore ? (typeof rawScore==="number"?rawScore.toFixed(1):rawScore) : "–";
-      const votes = info.scoreCount || info.ratingCount || info.voteCount || info.imdbVotes || "";
+      const votes = info.scoreCount || info.imdbRatingCount || info.ratingCount || info.voteCount || "";
       const votesText = votes ? (votes+" people rated") : "No rating yet";
 
       updateSEO({
@@ -755,6 +777,7 @@
       });
       buildDetailSchema(info,cover);
 
+      // /detail-rec => your JSON (data.items[…])
       apiGET("/wefeed-h5-bff/web/subject/detail-rec",{
         subjectId:id,page:1,perPage:12
       },recRes=>{
@@ -884,7 +907,7 @@
     }
     setLoading();
     apiGET("/wefeed-h5-bff/web/subject/detail",{subjectId:id},detailRes=>{
-      const subject=detailRes && detailRes.data && detailRes.data.subject ? detailRes.data.subject : {};
+      const subject=detailRes && detailRes.data && (detailRes.data.subject || (detailRes.data.items && detailRes.data.items[0])) || {};
       let slug=subject.detailPath || subject.pagePath || subject.seoUrl || "";
       if(slug && slug.indexOf("/")!==-1){
         const parts=slug.split("/");
