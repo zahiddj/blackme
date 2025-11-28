@@ -1,6 +1,6 @@
 /* ================================
    BlackMeMovie - CLEAN CORE CSS
-   Sidebar collapsible on desktop
+   Sidebar collapsible + mobile tweaks
    ================================ */
 
 html,body{
@@ -586,7 +586,7 @@ body.mb-sidebar-collapsed .mb-nav-item .text{
   margin-top:3px;
 }
 
-/* RESPONSIVE */
+/* RESPONSIVE / MOBILE TWEAKS */
 @media(max-width:900px){
   .mb-shell{
     flex-direction:column;
@@ -594,20 +594,12 @@ body.mb-sidebar-collapsed .mb-nav-item .text{
   .mb-main-wrap{
     width:100%;
   }
-  .detail-layout{
-    flex-direction:column;
-  }
-  .detail-right{
-    width:100%;
-  }
-  .detail-top{
-    flex-direction:column;
-  }
-  .detail-poster{
-    width:130px;
+  .container{
+    padding:12px;
   }
   .header{
     gap:8px;
+    padding:10px 12px;
   }
   .header-search{
     max-width:none;
@@ -616,4 +608,48 @@ body.mb-sidebar-collapsed .mb-nav-item .text{
   .header-actions .btn-header.btn-download{
     display:none;
   }
+  .detail-layout{
+    flex-direction:column;
+  }
+  .detail-right{
+    width:100%;
+  }
+  .detail-top{
+    flex-direction:row;
+  }
+  .detail-poster{
+    width:130px;
+  }
 }
+
+/* Extra small phones */
+@media(max-width:600px){
+  .container{
+    padding:10px;
+  }
+  .hero-inner{
+    flex-direction:column;
+  }
+  .hero-poster img{
+    width:120px;
+    height:180px;
+  }
+  .grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .header{
+    flex-wrap:wrap;
+  }
+  .header-search{
+    order:3;
+    width:100%;
+    padding:6px 0 0;
+  }
+  .header-logo{
+    flex:1;
+  }
+  .header-actions{
+    order:2;
+  }
+}
+
