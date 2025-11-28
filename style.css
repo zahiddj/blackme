@@ -1,6 +1,7 @@
-/* ==========================
-   BlackMeMovie - Core CSS
-   ========================== */
+/* ================================
+   BlackMeMovie - CLEAN CORE CSS
+   Sidebar collapsible on desktop
+   ================================ */
 
 html,body{
   margin:0;
@@ -30,7 +31,7 @@ img{
   background:#050509;
 }
 
-/* SIDEBAR */
+/* SIDEBAR (desktop collapsible + mobile drawer) */
 .mb-sidebar{
   width:235px;
   background:#050509;
@@ -39,8 +40,12 @@ img{
   display:flex;
   flex-direction:column;
   z-index:20;
-  transition:transform .25s ease;
+  transition:
+    width .25s ease,
+    transform .25s ease;
 }
+
+/* Nav list */
 .mb-nav-list{
   margin-top:4px;
 }
@@ -69,13 +74,25 @@ img{
   color:#fff;
 }
 
-/* MOBILE SIDEBAR TOGGLE */
+/* Desktop collapsed state (icon only) */
+body.mb-sidebar-collapsed .mb-sidebar{
+  width:64px;
+}
+body.mb-sidebar-collapsed .mb-nav-item{
+  justify-content:center;
+}
+body.mb-sidebar-collapsed .mb-nav-item .text{
+  display:none;
+}
+
+/* Mobile drawer behaviour */
 @media(max-width:900px){
   .mb-sidebar{
     position:fixed;
     top:0;
     left:0;
     bottom:0;
+    width:220px;
     transform:translateX(-100%);
   }
   body.mb-sidebar-open .mb-sidebar{
