@@ -746,90 +746,69 @@
   }
 
   function pageDetail(id){
-    highlightNav("");
-    mbPage = document.getElementById("mb-page");
-    if(!mbPage) return;
-
-    if(!id){
-        mbPage.innerHTML = "<h2>Missing id</h2>";
-        return;
-    }
-
     setLoading();
 
-    // EXACT same structure as Python
-    apiGET(DETAIL_ENDPOINT, { subjectId:id }, function(res){
-        let d = {};
-        if(res && res.data){
-            if(res.data.subject){
-                d = res.data.subject;                 // SAME as Python
-            } else {
-                d = res.data;
-            }
-        }
+    apiGET("/wefeed-h5-bff/web/subject/detail", { subjectId:id }, res => {
 
-        // FIXED: extract exactly like Python code
-        const title       = d.title || "Unknown Title";
-        const cover       = (d.cover && d.cover.url) || d.coverUrl || "";
-        const desc        = d.description || d.desc || "";
-        const country     = d.countryName || d.country || "";
-        const release     = d.releaseDate || d.release || "";
-        const genre       = d.genre || (Array.isArray(d.genreList) ? d.genreList.join(", ") : "");
-        const imdbValue   = d.imdbRatingValue || "";
-        const imdbCount   = d.imdbRatingCount || "";
-        const detailPath  = d.detailPath || d.detail_path || "";
+        const d = res?.data?.subject || {};
 
-        updateSEO({
-            title: title + " – Watch Online | BlackMeMovie",
-            description: desc || ("Watch "+title+" online in HD."),
-            image: cover,
-            url: location.href
-        });
+        const title   = d.title || "Unknown Title";
+        const cover   = (d.cover && d.cover.url) || "";
+        const desc    = d.description || "";
+        const release = d.releaseDate || "";
+        const genre   = d.genre || "";
+        const country = d.countryName || "";
+        const detailPath = d.detailPath || "";
 
-        buildDetailSchema(d, cover);
+        // ⭐ NEW: Stars, Seasons (you can use later)
+        const stars   = res?.data?.stars || [];
+        const seasons = res?.data?.resource?.seasons || [];
 
-        // GET SIMILAR
-        apiGET(DETAIL_REC_ENDPOINT, { subjectId:id }, function(recRes){
-            const similar = pickItems(recRes);
+        // NOW FIX RECOMMENDATIONS
+        apiGET("/wefeed-h5-bff/web/subject/detail-rec",
+               { subjectId:id, page:1, perPage:12 },
+               recRes => {
+
+            const rec = recRes?.data?.items || [];
 
             mbPage.innerHTML = `
                 <div class="detail-layout">
+
                     <div class="detail-main">
                         <div class="detail-top">
                             <img src="${cover}" class="detail-poster">
+
                             <div class="detail-info">
-                                <div class="detail-title">${esc(title)}</div>
+                                <div class="detail-title">${title}</div>
 
                                 <div class="detail-meta-line">
-                                    <b>Genre:</b> ${esc(genre)} &nbsp; • &nbsp;
-                                    <b>Country:</b> ${esc(country)} &nbsp; • &nbsp;
-                                    <b>Release:</b> ${esc(release)}
+                                    <b>Genre:</b> ${genre} &nbsp; • &nbsp;
+                                    <b>Country:</b> ${country} &nbsp; • &nbsp;
+                                    <b>Release:</b> ${release}
                                 </div>
 
-                                <p class="detail-desc">${esc(desc)}</p>
+                                <p class="detail-desc">${desc}</p>
 
                                 <div class="detail-buttons">
-                                    <a class="btn btn-watch-main" href="#/watch/${id}/${detailPath}">▶ Watch</a>
-                                    <span class="btn-secondary">In App</span>
-                                </div>
-
-                                <div style="margin-top:10px;color:#aaa;font-size:12px;">
-                                    <b>IMDb / Rating:</b>
-                                    ${imdbValue ? imdbValue+" / 10 ("+imdbCount+" votes)" : "No rating yet"}
+                                    <a class="btn btn-watch-main"
+                                       href="#/watch/${id}?path=${detailPath}&title=${encodeURIComponent(title)}">
+                                        ▶ Watch
+                                    </a>
                                 </div>
                             </div>
                         </div>
 
-                        <h2 style="margin-top:24px;">Similar</h2>
+                        <h2 class="section-title">Similar</h2>
                         <div class="grid">
                             ${
-                                (similar || []).map(s=>{
-                                    const c = s.cover && s.cover.url ? s.cover.url : s.coverUrl;
+                                rec.map(m=>{
+                                    const c = m.cover?.url || m.coverUrl || "";
+                                    const t = m.title || "Unknown";
                                     return `
-                                        <a href="#/detail/${s.subjectId}">
+                                        <a href="#/detail/${m.subjectId}">
                                             <div class="card">
                                                 <img src="${c}">
-                                                <div class="card-title">${getTitle(s)}</div>
+                                                <div class="card-title">${t}</div>
                                             </div>
                                         </a>
                                     `;
@@ -838,22 +817,12 @@
                         </div>
                     </div>
 
-                    <div class="detail-right">
-                        <div class="rating-box">
-                            <div class="rating-label">Rating</div>
-                            <div class="rating-score-row">
-                                <span class="rating-star">★</span>
-                                <span class="rating-score">${esc(imdbValue || "–")}</span>
-                                <span class="rating-outof">/10</span>
-                            </div>
-                            <div class="rating-votes">${esc(imdbCount ? imdbCount+" votes" : "No rating yet")}</div>
-                        </div>
-                    </div>
                 </div>
             `;
         });
     });
 }
+
 
   /* ===================== WATCH (LokLok iframe, NO debug text) ===================== */
   function pageWatch(id, epId){
