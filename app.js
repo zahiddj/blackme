@@ -825,78 +825,74 @@
 
 
   /* ===================== WATCH (LokLok iframe, NO debug text) ===================== */
-  function pageWatch(id, epId){
-    highlightNav("");
-    mbPage = document.getElementById("mb-page");
-    if(!mbPage) return;
+ async function loadWatch(subjectId) {
+    try {
+        const detailRes = await fetch(`/api/detail?id=${subjectId}`);
+        const detailData = await detailRes.json();
 
-    if(!id){
-      mbPage.innerHTML = "<h2>Missing id</h2>";
-      return;
+        const subject = detailData.data.subject;
+        const resource = detailData.data.resource;
+
+        const lokId = subject.subjectId;
+        const lokPath = subject.detailPath;
+
+        if (!lokId || !lokPath) {
+            document.querySelector("#videoWrap").innerHTML =
+                "<p>Error: Missing LokLok detailPath or subjectId</p>";
+            return;
+        }
+
+        // Call LokLok play API
+        const playRes = await fetch(
+            `https://lok-lok.cc/wefeed-h5-bff/web/subject/play?subjectId=${lokId}&se=1&ep=1&detail_path=${lokPath}`,
+            { headers: { "x-source": "web" } }
+        );
+        const playJson = await playRes.json();
+
+        const streams = playJson?.data?.streams || [];
+
+        if (streams.length === 0) {
+            document.querySelector("#videoWrap").innerHTML =
+                "<p>No streams found.</p>";
+            return;
+        }
+
+        // Build quality buttons
+        const btnWrap = document.querySelector("#qualityButtons");
+        btnWrap.innerHTML = "";
+        streams.forEach(s => {
+            let url = "/proxy?url=" + encodeURIComponent(s.url);
+            let btn = document.createElement("button");
+            btn.className = "btn";
+            btn.innerText = s.resolutions || s.quality || "Auto";
+            btn.onclick = () => changeQuality(url);
+            btnWrap.appendChild(btn);
+        });
+
+        // Load default
+        document.querySelector("#player").src =
+            "/proxy?url=" + encodeURIComponent(streams[0].url);
+
+    } catch (err) {
+        document.querySelector("#videoWrap").innerHTML =
+            "<p>Error loading video.</p>";
     }
+}
 
-    setLoading();
+function changeQuality(url) {
+    let v = document.getElementById("player");
+    let t = v.currentTime || 0;
+    v.src = url;
+    v.onloadedmetadata = () => {
+        v.currentTime = t;
+        v.play();
+    };
+}
 
-    apiGET(DETAIL_ENDPOINT,{subjectId:id},detailRes=>{
-      const data = (detailRes && detailRes.data) || {};
-      const subject = data.subject || (Array.isArray(data.items) && data.items[0]) || data || {};
+// INIT
+const id = new URLSearchParams(location.search).get("id");
+loadWatch(id);
 
-      let slug = subject.detailPath || subject.pagePath || subject.seoUrl || "";
-      if(slug && slug.indexOf("/") !== -1){
-        const parts = slug.split("/");
-        slug = parts[parts.length - 1];
-      }
-      if(!slug) slug = "movie-" + id;
-
-      const cover = (subject.cover && subject.cover.url) || subject.coverUrl || "";
-
-      const loklokUrl =
-        "https://lok-lok.cc/spa/videoPlayPage/movies/" + encodeURIComponent(slug) +
-        "?id=" + encodeURIComponent(id) +
-        "&type=/movie/detail&lang=en";
-
-      pushHistory({
-        id:id,
-        title:getTitle(subject),
-        cover:cover,
-        ts:Date.now()
-      });
-
-      updateSEO({
-        title:"Watch "+getTitle(subject)+" – BlackMeMovie",
-        description:"Streaming "+getTitle(subject)+" online in HD on BlackMeMovie.",
-        image:cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-        url:location.href
-      });
-
-      setJSONLD({
-        "@context":"https://schema.org",
-        "@type":"WatchAction",
-        "name":"Watch "+getTitle(subject),
-        "target":location.href
-      });
-
-      const epLabel = epId ? ("Episode: "+esc(epId)) : "";
-
-      mbPage.innerHTML = `
-        <h1>Watching</h1>
-        ${epLabel ? `<div style="margin-bottom:8px;color:#ccc;font-size:13px;">${epLabel}</div>` : ""}
-
-        <div class="player-wrapper">
-          <iframe
-            class="player-iframe"
-            src="${loklokUrl}"
-            allowfullscreen
-            scrolling="no"
-            referrerpolicy="no-referrer-when-downgrade">
-          </iframe>
-        </div>
-
-        <a class="btn" href="#/detail/${id}" style="margin-top:8px;display:inline-block;">⬅ Back</a>
-      `;
-      // NOTE: debug LokLok iframe URL text REMOVED as requested.
-    });
-  }
 
   /* ===================== HISTORY PAGE ===================== */
   function pageHistory(){
