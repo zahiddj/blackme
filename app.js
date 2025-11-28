@@ -47,11 +47,11 @@
     sort: "ForYou"
   };
 
-  let homeCache = null;
-  const searchCache = {};
-  const detailCache = {};
+  let homeCache = null;    // { trending, movies, shows }
+  const searchCache = {};  // q -> list
+  const detailCache = {};  // id -> { info, cover, genre,... }
 
-  /* ============ SEO ============ */
+  /* ===================== SEO ===================== */
   function updateSEO(config){
     config = config || {};
     const title = config.title || "BlackMeMovie – Watch Movies & TV Shows Online Free";
@@ -70,36 +70,52 @@
       return el;
     }
 
-    ensureMeta('meta[name="description"]', ()=> {
-      const m=document.createElement("meta"); m.name="description"; return m;
+    ensureMeta('meta[name="description"]', () => {
+      const m = document.createElement("meta");
+      m.name = "description";
+      return m;
     }).content = description;
 
-    ensureMeta('meta[property="og:title"]', ()=> {
-      const m=document.createElement("meta"); m.setAttribute("property","og:title"); return m;
+    ensureMeta('meta[property="og:title"]', () => {
+      const m = document.createElement("meta");
+      m.setAttribute("property","og:title");
+      return m;
     }).content = title;
 
-    ensureMeta('meta[property="og:description"]', ()=> {
-      const m=document.createElement("meta"); m.setAttribute("property","og:description"); return m;
+    ensureMeta('meta[property="og:description"]', () => {
+      const m = document.createElement("meta");
+      m.setAttribute("property","og:description");
+      return m;
     }).content = description;
 
-    ensureMeta('meta[property="og:image"]', ()=> {
-      const m=document.createElement("meta"); m.setAttribute("property","og:image"); return m;
+    ensureMeta('meta[property="og:image"]', () => {
+      const m = document.createElement("meta");
+      m.setAttribute("property","og:image");
+      return m;
     }).content = image;
 
-    ensureMeta('meta[property="og:url"]', ()=> {
-      const m=document.createElement("meta"); m.setAttribute("property","og:url"); return m;
+    ensureMeta('meta[property="og:url"]', () => {
+      const m = document.createElement("meta");
+      m.setAttribute("property","og:url");
+      return m;
     }).content = url;
 
-    ensureMeta('meta[name="twitter:title"]', ()=> {
-      const m=document.createElement("meta"); m.name="twitter:title"; return m;
+    ensureMeta('meta[name="twitter:title"]', () => {
+      const m = document.createElement("meta");
+      m.name = "twitter:title";
+      return m;
     }).content = title;
 
-    ensureMeta('meta[name="twitter:description"]', ()=> {
-      const m=document.createElement("meta"); m.name="twitter:description"; return m;
+    ensureMeta('meta[name="twitter:description"]', () => {
+      const m = document.createElement("meta");
+      m.name = "twitter:description";
+      return m;
     }).content = description;
 
-    ensureMeta('meta[name="twitter:image"]', ()=> {
-      const m=document.createElement("meta"); m.name="twitter:image"; return m;
+    ensureMeta('meta[name="twitter:image"]', () => {
+      const m = document.createElement("meta");
+      m.name = "twitter:image";
+      return m;
     }).content = image;
 
     let canon = document.querySelector('link[rel="canonical"]');
@@ -124,7 +140,7 @@
     }catch(e){}
   }
 
-  /* ============ UTIL ============ */
+  /* ===================== UTIL ===================== */
   function esc(s){
     return (s || "").toString().replace(/[&<>"']/g, m => ({
       "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
@@ -142,10 +158,9 @@
     );
   }
 
-  // handles data.items, data.subjectList, data.list
-  function pickItems(res){
-    if(!res || !res.data) return [];
-    const d = res.data;
+  function pickItems(resp){
+    if(!resp || !resp.data) return [];
+    const d = resp.data;
     if(Array.isArray(d.items)) return d.items;
     if(Array.isArray(d.subjectList)) return d.subjectList;
     if(Array.isArray(d.list)) return d.list;
@@ -153,28 +168,29 @@
   }
 
   function apiGET(path, params, cb){
-    const sp = new URLSearchParams(params||{});
+    const sp = new URLSearchParams(params || {});
     const url = API + path + (sp.toString() ? ("?" + sp.toString()) : "");
     fetch(url,{headers:COMMON_HEADERS})
       .then(r=>r.json())
       .then(cb)
       .catch(()=>cb({}));
   }
+
   function apiPOST(path, body, cb){
-    fetch(API+path,{
+    fetch(API + path,{
       method:"POST",
       headers:Object.assign({},COMMON_HEADERS,{"Content-Type":"application/json"}),
-      body:JSON.stringify(body||{})
+      body:JSON.stringify(body || {})
     }).then(r=>r.json()).then(cb).catch(()=>cb({}));
   }
 
-  /* HISTORY */
+  /* ===================== HISTORY ===================== */
   function pushHistory(item){
     try{
       let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      list = list.filter(x=>x.id!==item.id);
+      list = list.filter(x => x.id !== item.id);
       list.unshift(item);
-      if(list.length>80) list=list.slice(0,80);
+      if(list.length > 80) list = list.slice(0,80);
       localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
     }catch(e){}
   }
@@ -184,10 +200,11 @@
     }catch(e){return [];}
   }
 
-  /* LAYOUT */
+  /* ===================== LAYOUT ===================== */
   function layout(){
     const root = document.getElementById("moviebox-app");
     if(!root) return;
+
     root.innerHTML = `
       <div class="mb-shell">
         <div class="mb-sidebar">
@@ -236,16 +253,6 @@
           </div>
 
           <div class="container">
-            <select class="mb-dropdown" id="mb-nav-dropdown">
-              <option value="#/home">🏠 Home</option>
-              <option value="#/category/TV">📺 TV show</option>
-              <option value="#/category/Movie">🎬 Movie</option>
-              <option value="#/category/Animation">🐻 Animation</option>
-              <option value="#/category/Sport">🎮 Sport Live</option>
-              <option value="#/category/Novel">📖 Novel 🔥</option>
-              <option value="#/category/MostWatched">📊 Most Watched</option>
-            </select>
-
             <div id="mb-page"></div>
           </div>
 
@@ -256,27 +263,18 @@
       </div>
     `;
 
-    // sidebar click
+    // sidebar click routing
     root.querySelectorAll(".mb-nav-item").forEach(el=>{
       el.addEventListener("click",()=>{
         const r = el.getAttribute("data-route");
         if(r){
           location.hash = r;
-          document.body.classList.remove("mb-sidebar-open");
+          document.body.classList.remove("mb-sidebar-open"); // close mobile drawer
         }
       });
     });
 
-    // dropdown
-    const navDropdown = document.getElementById("mb-nav-dropdown");
-    if(navDropdown){
-      navDropdown.addEventListener("change",()=>{
-        const v = navDropdown.value;
-        if(v) location.hash=v;
-      });
-    }
-
-    // burger: desktop collapse, mobile drawer
+    // burger for desktop collapse / mobile drawer
     const burger = root.querySelector(".logo-burger");
     if(burger){
       burger.addEventListener("click",()=>{
@@ -292,45 +290,38 @@
     const sInput = document.getElementById("mb-search-input");
     const sIcon = document.getElementById("mb-search-icon");
     const triggerSearch = ()=>{
-      const v=(sInput.value||"").trim();
-      if(v) location.hash = "#/search/"+encodeURIComponent(v);
+      const v = (sInput.value || "").trim();
+      if(v) location.hash = "#/search/" + encodeURIComponent(v);
     };
     if(sInput){
       sInput.addEventListener("keydown",e=>{
-        if(e.key==="Enter") triggerSearch();
+        if(e.key === "Enter") triggerSearch();
       });
     }
-    if(sIcon) sIcon.addEventListener("click",triggerSearch);
+    if(sIcon) sIcon.addEventListener("click", triggerSearch);
 
     // history button
     const hBtn = document.getElementById("mb-btn-history");
-    if(hBtn) hBtn.onclick = ()=>{ location.hash="#/history"; };
+    if(hBtn) hBtn.onclick = ()=>{ location.hash = "#/history"; };
   }
 
   let mbPage = null;
+
   function setLoading(){
-    if(!mbPage) mbPage=document.getElementById("mb-page");
-    if(mbPage) mbPage.innerHTML='<div class="loader"></div>';
+    mbPage = document.getElementById("mb-page");
+    if(mbPage) mbPage.innerHTML = '<div class="loader"></div>';
   }
 
   function highlightNav(route){
     const root = document.getElementById("moviebox-app");
     if(!root) return;
     root.querySelectorAll(".mb-nav-item").forEach(el=>{
-      if(el.getAttribute("data-route")===route) el.classList.add("active");
+      if(el.getAttribute("data-route") === route) el.classList.add("active");
       else el.classList.remove("active");
     });
-    const navDropdown = document.getElementById("mb-nav-dropdown");
-    if(navDropdown){
-      if(route && navDropdown.querySelector(`option[value="${route}"]`)){
-        navDropdown.value = route;
-      }else{
-        navDropdown.value = "#/home";
-      }
-    }
   }
 
-  /* HOME */
+  /* ===================== HOME ===================== */
   function buildHomeSchema(trending, movies, shows){
     const urlBase = location.origin + location.pathname;
     const sample = (trending && trending[0]) || (movies && movies[0]) || (shows && shows[0]);
@@ -346,13 +337,17 @@
       }
     };
     if(sample){
-      schema.about = { "@type":"Movie", "name": getTitle(sample) };
+      schema.about = {
+        "@type":"Movie",
+        "name": getTitle(sample)
+      };
     }
     setJSONLD(schema);
   }
 
   function pageHome(){
     highlightNav("#/home");
+
     updateSEO({
       title:"BlackMeMovie – Watch Movies & TV Shows Online Free",
       description:"Watch trending movies, TV shows, drama, anime & more on BlackMeMovie. Free HD streaming.",
@@ -369,6 +364,7 @@
     }
 
     setLoading();
+
     apiGET("/wefeed-h5-bff/web/subject/trending",{page:0,perPage:18},trendRes=>{
       currentTrending = pickItems(trendRes);
       currentHeroIndex = 0;
@@ -388,17 +384,19 @@
             movies: movies.slice(),
             shows: shows.slice()
           };
+
           buildHomeSchema(homeCache.trending, homeCache.movies, homeCache.shows);
-          renderHome(movies,shows);
+          renderHome(movies, shows);
         });
       });
     });
   }
 
-  function renderHome(movies,shows){
-    if(!mbPage) mbPage=document.getElementById("mb-page");
+  function renderHome(movies, shows){
+    mbPage = document.getElementById("mb-page");
     if(!mbPage) return;
-    const trending=currentTrending||[];
+
+    const trending = currentTrending || [];
     const hero = trending[currentHeroIndex] || null;
 
     let heroHTML = "";
@@ -409,6 +407,7 @@
       for(let i=0;i<maxDots;i++){
         dots.push('<div class="hero-dot'+(i===currentHeroIndex?' active':'')+'" data-hero-index="'+i+'"></div>');
       }
+
       heroHTML = `
         <div class="hero">
           <div class="hero-bg" style="background-image:url('${cover}')"></div>
@@ -439,86 +438,81 @@
 
     mbPage.innerHTML = `
       ${heroHTML}
+
       <div>
         <div class="section-title">🔥 Trending</div>
         <div class="grid">
-          ${
-            trending.map(m=>{
-              const c=m.cover && m.cover.url?m.cover.url:"";
-              return `
-                <a href="#/detail/${m.subjectId}">
-                  <div class="card">
-                    <img src="${c}">
-                    <div class="card-title">${getTitle(m)}</div>
-                  </div>
-                </a>
-              `;
-            }).join("")
-          }
+          ${trending.map(m=>{
+            const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
+            return `
+              <a href="#/detail/${m.subjectId}">
+                <div class="card">
+                  <img src="${c}">
+                  <div class="card-title">${getTitle(m)}</div>
+                </div>
+              </a>
+            `;
+          }).join("")}
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div class="section-title">🎞 Movies</div>
         <div class="grid">
-          ${
-            movies.map(m=>{
-              const c=m.cover && m.cover.url?m.cover.url:"";
-              return `
-                <a href="#/detail/${m.subjectId}">
-                  <div class="card">
-                    <img src="${c}">
-                    <div class="card-title">${getTitle(m)}</div>
-                  </div>
-                </a>
-              `;
-            }).join("")
-          }
+          ${movies.map(m=>{
+            const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
+            return `
+              <a href="#/detail/${m.subjectId}">
+                <div class="card">
+                  <img src="${c}">
+                  <div class="card-title">${getTitle(m)}</div>
+                </div>
+              </a>
+            `;
+          }).join("")}
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div class="section-title">📺 TV Shows</div>
         <div class="grid">
-          ${
-            shows.map(m=>{
-              const c=m.cover && m.cover.url?m.cover.url:"";
-              return `
-                <a href="#/detail/${m.subjectId}">
-                  <div class="card">
-                    <img src="${c}">
-                    <div class="card-title">${getTitle(m)}</div>
-                  </div>
-                </a>
-              `;
-            }).join("")
-          }
+          ${shows.map(m=>{
+            const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
+            return `
+              <a href="#/detail/${m.subjectId}">
+                <div class="card">
+                  <img src="${c}">
+                  <div class="card-title">${getTitle(m)}</div>
+                </div>
+              </a>
+            `;
+          }).join("")}
         </div>
       </div>
     `;
 
-    const prev=document.getElementById("mb-hero-prev");
-    const next=document.getElementById("mb-hero-next");
-    if(prev) prev.onclick=()=>{
+    const prev = document.getElementById("mb-hero-prev");
+    const next = document.getElementById("mb-hero-next");
+    if(prev) prev.onclick = ()=>{
       if(!currentTrending.length) return;
-      currentHeroIndex=(currentHeroIndex-1+currentTrending.length)%currentTrending.length;
+      currentHeroIndex = (currentHeroIndex - 1 + currentTrending.length) % currentTrending.length;
       renderHome(movies,shows);
     };
-    if(next) next.onclick=()=>{
+    if(next) next.onclick = ()=>{
       if(!currentTrending.length) return;
-      currentHeroIndex=(currentHeroIndex+1)%currentTrending.length;
+      currentHeroIndex = (currentHeroIndex + 1) % currentTrending.length;
       renderHome(movies,shows);
     };
     document.querySelectorAll(".hero-dot").forEach(dot=>{
-      dot.onclick=()=>{
-        const idx=parseInt(dot.getAttribute("data-hero-index"),10)||0;
-        currentHeroIndex=idx;
+      dot.onclick = ()=>{
+        const idx = parseInt(dot.getAttribute("data-hero-index"),10) || 0;
+        currentHeroIndex = idx;
         renderHome(movies,shows);
       };
     });
   }
 
-  /* CATEGORY */
+  /* ===================== CATEGORY ===================== */
   function mapTypeToClassify(t){
     switch(t){
       case "TV": return "TV";
@@ -533,12 +527,14 @@
 
   function pageCategory(typeParam){
     highlightNav("#/category/"+typeParam);
+
     updateSEO({
       title:esc(typeParam)+" – Browse | BlackMeMovie",
       description:"Browse "+typeParam+" content on BlackMeMovie in HD.",
       image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
       url:location.href
     });
+
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"CollectionPage",
@@ -552,12 +548,14 @@
     categoryState.country="All";
     categoryState.year="All";
     categoryState.language="All";
-    categoryState.sort = (typeParam==="MostWatched")?"Hottest":"ForYou";
+    categoryState.sort = (typeParam === "MostWatched") ? "Hottest" : "ForYou";
 
-    if(!mbPage) mbPage=document.getElementById("mb-page");
+    mbPage = document.getElementById("mb-page");
     if(!mbPage) return;
+
     mbPage.innerHTML = `
       <h1>${esc(typeParam)}</h1>
+
       <div class="mb-filter-panel">
         <div class="mb-filter-row">
           <div class="mb-filter-label">Genre</div>
@@ -580,17 +578,19 @@
           <div class="mb-filter-options" id="mb-filter-sort"></div>
         </div>
       </div>
+
       <div class="grid" id="mb-filter-grid"></div>
     `;
+
     renderFilterPills();
     loadCategoryResults();
   }
 
-  function renderFilterGroup(containerId,labelArr,activeVal,filterKey){
-    const el=document.getElementById(containerId);
+  function renderFilterGroup(containerId, labelArr, activeVal, filterKey){
+    const el = document.getElementById(containerId);
     if(!el) return;
     el.innerHTML = labelArr.map(v=>{
-      const cls="mb-filter-pill"+(v===activeVal?" active":"");
+      const cls = "mb-filter-pill" + (v === activeVal ? " active":"");
       return `<span class="${cls}" data-filter="${filterKey}" data-value="${esc(v)}">${esc(v)}</span>`;
     }).join("");
   }
@@ -603,11 +603,11 @@
     renderFilterGroup("mb-filter-sort",SORT_OPTIONS,categoryState.sort,"sort");
 
     document.querySelectorAll("#moviebox-app .mb-filter-pill").forEach(el=>{
-      el.onclick=()=>{
-        const key=el.getAttribute("data-filter");
-        const val=el.getAttribute("data-value");
+      el.onclick = ()=>{
+        const key = el.getAttribute("data-filter");
+        const val = el.getAttribute("data-value");
         if(!key) return;
-        categoryState[key]=val;
+        categoryState[key] = val;
         renderFilterPills();
         loadCategoryResults();
       };
@@ -615,9 +615,10 @@
   }
 
   function loadCategoryResults(){
-    const grid=document.getElementById("mb-filter-grid");
+    const grid = document.getElementById("mb-filter-grid");
     if(!grid) return;
-    grid.innerHTML='<div class="loader"></div>';
+
+    grid.innerHTML = '<div class="loader"></div>';
 
     const body = {
       tabId:2,
@@ -630,10 +631,11 @@
       country:categoryState.country,
       language:categoryState.language
     };
+
     apiPOST("/wefeed-h5-bff/web/filter",body,res=>{
-      const data=pickItems(res);
+      const data = pickItems(res);
       grid.innerHTML = data.map(m=>{
-        const c=m.cover && m.cover.url?m.cover.url:"";
+        const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
         return `
           <a href="#/detail/${m.subjectId}">
             <div class="card">
@@ -646,16 +648,17 @@
     });
   }
 
-  /* SEARCH */
-  function renderSearchPage(q,list){
-    if(!mbPage) mbPage=document.getElementById("mb-page");
+  /* ===================== SEARCH ===================== */
+  function renderSearchPage(q, list){
+    mbPage = document.getElementById("mb-page");
     if(!mbPage) return;
+
     mbPage.innerHTML = `
       <h1>Search: ${esc(q)}</h1>
       <div class="grid">
         ${
           list.map(m=>{
-            const c=m.cover && m.cover.url?m.cover.url:"";
+            const c = m.cover && m.cover.url ? m.cover.url : (m.coverUrl || "");
             return `
               <a href="#/detail/${m.subjectId}">
                 <div class="card">
@@ -673,12 +676,14 @@
   function pageSearch(q){
     highlightNav("");
     setLoading();
+
     updateSEO({
       title:"Search: "+q+" – BlackMeMovie",
       description:"Search results for '"+q+"' on BlackMeMovie.",
       image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
       url:location.href
     });
+
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"SearchResultsPage",
@@ -691,243 +696,187 @@
       renderSearchPage(q,searchCache[q]);
       return;
     }
-    const payload={keyword:q,page:1,perPage:PER_PAGE};
-    fetch(API+"/wefeed-h5-bff/web/subject/search",{
+
+    const payload = { keyword:q, page:1, perPage:PER_PAGE };
+
+    fetch(API + "/wefeed-h5-bff/web/subject/search",{
       method:"POST",
       headers:Object.assign({},COMMON_HEADERS,{"Content-Type":"application/json"}),
       body:JSON.stringify(payload)
     })
     .then(r=>r.json())
     .then(resp=>{
-      const list=pickItems(resp);
-      searchCache[q]=list.slice();
+      const list = pickItems(resp);
+      searchCache[q] = list.slice();
       renderSearchPage(q,list);
     })
     .catch(()=>{
-      if(!mbPage) mbPage=document.getElementById("mb-page");
-      if(mbPage) mbPage.innerHTML='<p style="color:#aaa">Search failed.</p>';
+      mbPage = document.getElementById("mb-page");
+      if(mbPage) mbPage.innerHTML = `<p style="color:#aaa">Search failed.</p>`;
     });
   }
 
-  /* DETAIL */
-  function buildDetailSchema(info,cover){
-    info=info||{};
-    const typeStr=(info.classify || info.typeName || info.subjectType || "").toLowerCase();
+  /* ===================== DETAIL (MATCHES main.py LOGIC) ===================== */
+  function buildDetailSchema(info, cover){
+    info = info || {};
+    const typeStr = (info.classify || info.typeName || info.subjectType || "").toLowerCase();
     const isSeries = typeStr.includes("tv") || typeStr.includes("series") || typeStr.includes("show");
-    const schema={
+
+    const schema = {
       "@context":"https://schema.org",
-      "@type":isSeries?"TVSeries":"Movie",
-      "name":getTitle(info),
-      "image":cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-      "description":info.description || "",
-      "datePublished":info.releaseDate || info.year || "",
-      "genre":info.genre || (Array.isArray(info.genres)?info.genres.join(", "):"")
+      "@type": isSeries ? "TVSeries" : "Movie",
+      "name": getTitle(info),
+      "image": cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+      "description": info.description || info.desc || "",
+      "datePublished": info.releaseDate || info.year || "",
+      "genre": info.genre || (Array.isArray(info.genreList)? info.genreList.join(", ") : "")
     };
 
     const rawScore = info.score || info.imdbRatingValue || info.imdbScore;
     const ratingCount = info.scoreCount || info.imdbRatingCount || info.ratingCount || info.voteCount;
     if(rawScore){
-      schema.aggregateRating={
+      schema.aggregateRating = {
         "@type":"AggregateRating",
-        "ratingValue":typeof rawScore==="number"?rawScore.toFixed(1):rawScore,
-        "ratingCount":ratingCount || ""
+        "ratingValue": typeof rawScore === "number" ? rawScore.toFixed(1) : rawScore,
+        "ratingCount": ratingCount || ""
       };
     }
+
     setJSONLD(schema);
   }
 
   function pageDetail(id){
     highlightNav("");
+    mbPage = document.getElementById("mb-page");
+    if(!mbPage) return;
+
     if(!id){
-      if(!mbPage) mbPage=document.getElementById("mb-page");
-      if(mbPage) mbPage.innerHTML="<h2>Missing id</h2>";
+      mbPage.innerHTML = "<h2>Missing id</h2>";
       return;
     }
+
     setLoading();
 
-    if(detailCache[id]){
-      renderDetailFromCache(id);
-      return;
-    }
+    apiGET(DETAIL_ENDPOINT,{subjectId:id},res=>{
+      const data = (res && res.data) || {};
+      const d = data.subject || (Array.isArray(data.items) && data.items[0]) || data || {};
 
-    // MAIN DETAIL CALL
-    apiGET(DETAIL_ENDPOINT,{subjectId:id},detailRes=>{
-      const data = detailRes && detailRes.data ? detailRes.data : {};
-      const info = data.subject || (Array.isArray(data.items) && data.items[0]) || {};
-
-      const episodes =
-        info.episodes ||
-        info.episodeList ||
-        info.seriesEpisodes ||
-        [];
-
-      const cover = info.cover && info.cover.url ? info.cover.url : "";
-      const year = info.releaseDate || info.year || "";
-      const country = info.countryName || "";
-      const genre = info.genre || (Array.isArray(info.genres)?info.genres.join(", "):"");
-
-      const rawScore = info.score || info.imdbRatingValue || info.imdbScore;
-      const score = rawScore ? (typeof rawScore==="number"?rawScore.toFixed(1):rawScore) : "–";
-      const votes = info.scoreCount || info.imdbRatingCount || info.ratingCount || info.voteCount || "";
-      const votesText = votes ? (votes+" people rated") : "No rating yet";
+      const title = d.title || d.name || "Unknown Title";
+      const cover = (d.cover && d.cover.url) || d.coverUrl || "";
+      const desc = d.description || d.desc || "";
+      const country = d.countryName || d.country || "";
+      const release = d.releaseDate || d.release || "";
+      const genre = d.genre || (Array.isArray(d.genreList) ? d.genreList.join(", ") : "");
+      const imdbValue = d.imdbRatingValue || d.imdbScore || d.score || "";
+      const imdbCount = d.imdbRatingCount || d.scoreCount || d.ratingCount || d.voteCount || "";
+      const ratingText = imdbValue ? `${imdbValue} / 10 (${imdbCount || "N/A"} votes)` : "No rating yet";
 
       updateSEO({
-        title:getTitle(info)+" – Watch Online | BlackMeMovie",
-        description:info.description || ("Watch "+getTitle(info)+" online in HD on BlackMeMovie."),
-        image:cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-        url:location.href
+        title: title + " – Watch Online | BlackMeMovie",
+        description: desc || ("Watch "+title+" online in HD on BlackMeMovie."),
+        image: cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
+        url: location.href
       });
-      buildDetailSchema(info,cover);
 
-      // RECOMMENDATIONS
-      apiGET(DETAIL_REC_ENDPOINT,{
-        subjectId:id,page:1,perPage:12
-      },recRes=>{
-        const rec=pickItems(recRes);
-        detailCache[id]={info,episodes,cover,year,country,genre,score,votesText,rec};
-        renderDetailFromCache(id);
+      buildDetailSchema(d,cover);
+
+      // recommendations
+      apiGET(DETAIL_REC_ENDPOINT,{subjectId:id,page:1,perPage:12},recRes=>{
+        const similar = pickItems(recRes);
+
+        mbPage.innerHTML = `
+          <div class="detail-layout">
+            <div class="detail-main">
+              <div class="detail-top">
+                <img src="${cover}" class="detail-poster">
+                <div class="detail-info">
+                  <div class="detail-title">${esc(title)}</div>
+                  <div class="detail-meta-line">
+                    <b>Genre:</b> ${esc(genre)} &nbsp; • &nbsp;
+                    <b>Country:</b> ${esc(country)} &nbsp; • &nbsp;
+                    <b>Release:</b> ${esc(release)}
+                  </div>
+                  <p class="detail-desc">${esc(desc)}</p>
+                  <div class="detail-buttons">
+                    <a href="#/watch/${id}" class="btn btn-watch-main">▶ Watch</a>
+                    <span class="btn-secondary btn-watch-app">In App</span>
+                  </div>
+                  <div style="margin-top:10px;font-size:12px;color:#aaa;">
+                    <b>IMDb / Rating:</b> ${esc(ratingText)}
+                  </div>
+                </div>
+              </div>
+
+              <h2 style="margin-top:24px;">Similar</h2>
+              <div class="grid">
+                ${
+                  (similar || []).map(s=>{
+                    const c = s.cover && s.cover.url ? s.cover.url : (s.coverUrl || "");
+                    return `
+                      <a href="#/detail/${s.subjectId}">
+                        <div class="card">
+                          <img src="${c}">
+                          <div class="card-title">${getTitle(s)}</div>
+                        </div>
+                      </a>
+                    `;
+                  }).join("")
+                }
+              </div>
+            </div>
+
+            <div class="detail-right">
+              <div class="rating-box">
+                <div class="rating-label">Rating</div>
+                <div class="rating-score-row">
+                  <span class="rating-star">★</span>
+                  <span class="rating-score">${esc(imdbValue || "–")}</span>
+                  <span class="rating-outof">/10</span>
+                </div>
+                <div class="rating-votes">${esc(imdbCount ? imdbCount+" votes" : "No rating yet")}</div>
+              </div>
+            </div>
+          </div>
+        `;
       });
     });
   }
 
-  function renderDetailFromCache(id){
-    if(!mbPage) mbPage=document.getElementById("mb-page");
-    if(!mbPage) return;
-    const c=detailCache[id];
-    if(!c){ mbPage.innerHTML="<h2>Not found</h2>"; return;}
-    const {info,episodes,cover,year,country,genre,score,votesText,rec}=c;
-
-    const epHTML = (episodes && episodes.length)
-      ? `<div class="detail-episodes-row">${
-          episodes.map((e,idx)=>{
-            const epId=e.episodeId || e.id || "";
-            const name=e.name || ("Ep "+(idx+1));
-            return `
-              <a href="#/watch/${id}/ep/${epId}">
-                <span class="detail-ep-pill">${esc(name)}</span>
-              </a>
-            `;
-          }).join("")
-        }</div>`
-      : `<p style="color:#aaa;font-size:13px;">No episodes listed.</p>`;
-
-    mbPage.innerHTML = `
-      <div class="detail-layout">
-        <div class="detail-main">
-          <div class="detail-top">
-            <img src="${cover}" class="detail-poster">
-            <div class="detail-info">
-              <div class="detail-title">${getTitle(info)}</div>
-              <div class="detail-meta-line">
-                ${esc(year)} &nbsp; | &nbsp; ${esc(country)} &nbsp; | &nbsp; ${esc(genre)}
-              </div>
-              <p class="detail-desc">${esc(info.description||"")}</p>
-              <div class="detail-buttons">
-                <a href="#/watch/${id}" class="btn btn-watch-main">▶ Watch Online</a>
-                <span class="btn-secondary btn-watch-app">Watch in App</span>
-              </div>
-              <div class="detail-social-row">
-                <span>Share:</span>
-                <span class="detail-social-pill">FB</span>
-                <span class="detail-social-pill">X</span>
-                <span class="detail-social-pill">TG</span>
-                <span class="detail-social-pill">WA</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="detail-tabs">
-            <div class="detail-tab active" data-tab="episodes">Episodes</div>
-            <div class="detail-tab" data-tab="cast">Top Cast</div>
-            <div class="detail-tab" data-tab="reviews">User Review</div>
-          </div>
-
-          <div class="detail-section" id="detail-tab-episodes">
-            ${epHTML}
-          </div>
-          <div class="detail-section hidden" id="detail-tab-cast">
-            <p style="color:#aaa;font-size:13px;">Cast data not available.</p>
-          </div>
-          <div class="detail-section hidden" id="detail-tab-reviews">
-            <p style="color:#aaa;font-size:13px;">User reviews not available.</p>
-          </div>
-
-          <h2 style="margin-top:24px;">Similar</h2>
-          <div class="grid">
-            ${
-              (rec||[]).map(m=>{
-                const cc=m.cover && m.cover.url?m.cover.url:"";
-                return `
-                  <a href="#/detail/${m.subjectId}">
-                    <div class="card">
-                      <img src="${cc}">
-                      <div class="card-title">${getTitle(m)}</div>
-                    </div>
-                  </a>
-                `;
-              }).join("")
-            }
-          </div>
-        </div>
-
-        <div class="detail-right">
-          <div class="rating-box">
-            <div class="rating-label">Rating</div>
-            <div class="rating-score-row">
-              <span class="rating-star">★</span>
-              <span class="rating-score">${esc(score)}</span>
-              <span class="rating-outof">/10</span>
-            </div>
-            <div class="rating-votes">${esc(votesText)}</div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.querySelectorAll("#moviebox-app .detail-tab").forEach(tab=>{
-      tab.onclick=()=>{
-        const t=tab.getAttribute("data-tab");
-        document.querySelectorAll("#moviebox-app .detail-tab").forEach(x=>x.classList.remove("active"));
-        tab.classList.add("active");
-        ["episodes","cast","reviews"].forEach(name=>{
-          const sec=document.getElementById("detail-tab-"+name);
-          if(!sec) return;
-          if(name===t) sec.classList.remove("hidden");
-          else sec.classList.add("hidden");
-        });
-      };
-    });
-  }
-
-  /* WATCH */
-  function pageWatch(id,epId){
+  /* ===================== WATCH (LokLok iframe, NO debug text) ===================== */
+  function pageWatch(id, epId){
     highlightNav("");
+    mbPage = document.getElementById("mb-page");
+    if(!mbPage) return;
+
     if(!id){
-      if(!mbPage) mbPage=document.getElementById("mb-page");
-      if(mbPage) mbPage.innerHTML="<h2>Missing id</h2>";
+      mbPage.innerHTML = "<h2>Missing id</h2>";
       return;
     }
+
     setLoading();
 
     apiGET(DETAIL_ENDPOINT,{subjectId:id},detailRes=>{
-      const data = detailRes && detailRes.data ? detailRes.data : {};
-      const subject = data.subject || (Array.isArray(data.items) && data.items[0]) || {};
-      let slug=subject.detailPath || subject.pagePath || subject.seoUrl || "";
-      if(slug && slug.indexOf("/")!==-1){
-        const parts=slug.split("/");
-        slug=parts[parts.length-1];
+      const data = (detailRes && detailRes.data) || {};
+      const subject = data.subject || (Array.isArray(data.items) && data.items[0]) || data || {};
+
+      let slug = subject.detailPath || subject.pagePath || subject.seoUrl || "";
+      if(slug && slug.indexOf("/") !== -1){
+        const parts = slug.split("/");
+        slug = parts[parts.length - 1];
       }
-      if(!slug) slug="movie-"+id;
-      const cover=(subject.cover && subject.cover.url)||"";
-      const loklokUrl=
-        "https://lok-lok.cc/spa/videoPlayPage/movies/"+encodeURIComponent(slug)+
-        "?id="+encodeURIComponent(id)+
+      if(!slug) slug = "movie-" + id;
+
+      const cover = (subject.cover && subject.cover.url) || subject.coverUrl || "";
+
+      const loklokUrl =
+        "https://lok-lok.cc/spa/videoPlayPage/movies/" + encodeURIComponent(slug) +
+        "?id=" + encodeURIComponent(id) +
         "&type=/movie/detail&lang=en";
 
       pushHistory({
         id:id,
         title:getTitle(subject),
-        cover:(subject.cover && subject.cover.url)||"",
+        cover:cover,
         ts:Date.now()
       });
 
@@ -937,6 +886,7 @@
         image:cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
         url:location.href
       });
+
       setJSONLD({
         "@context":"https://schema.org",
         "@type":"WatchAction",
@@ -944,50 +894,53 @@
         "target":location.href
       });
 
-      if(!mbPage) mbPage=document.getElementById("mb-page");
-      if(!mbPage) return;
       const epLabel = epId ? ("Episode: "+esc(epId)) : "";
+
       mbPage.innerHTML = `
         <h1>Watching</h1>
         ${epLabel ? `<div style="margin-bottom:8px;color:#ccc;font-size:13px;">${epLabel}</div>` : ""}
+
         <div class="player-wrapper">
-          <iframe class="player-iframe"
+          <iframe
+            class="player-iframe"
             src="${loklokUrl}"
             allowfullscreen
             scrolling="no"
             referrerpolicy="no-referrer-when-downgrade">
           </iframe>
         </div>
-        <p style="color:#888;font-size:12px;margin-top:10px;word-break:break-all">
-          LokLok iframe URL:<br>${esc(loklokUrl)}
-        </p>
+
         <a class="btn" href="#/detail/${id}" style="margin-top:8px;display:inline-block;">⬅ Back</a>
       `;
+      // NOTE: debug LokLok iframe URL text REMOVED as requested.
     });
   }
 
-  /* HISTORY */
+  /* ===================== HISTORY PAGE ===================== */
   function pageHistory(){
     highlightNav("");
-    const list=readHistory();
+    const list = readHistory();
+
     updateSEO({
       title:"Watch history – BlackMeMovie",
       description:"Your watch history on BlackMeMovie.",
       image:"https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
       url:location.href
     });
+
     setJSONLD({
       "@context":"https://schema.org",
       "@type":"ItemList",
       "name":"Watch history – BlackMeMovie",
       "url":location.href,
-      "numberOfItems":list.length
+      "numberOfItems": list.length
     });
 
-    if(!mbPage) mbPage=document.getElementById("mb-page");
+    mbPage = document.getElementById("mb-page");
     if(!mbPage) return;
+
     if(!list.length){
-      mbPage.innerHTML=`
+      mbPage.innerHTML = `
         <h1>Watch history</h1>
         <p style="color:#aaa;font-size:13px;margin-top:6px;">
           No history yet. Start watching something on BlackMeMovie.
@@ -995,7 +948,8 @@
       `;
       return;
     }
-    mbPage.innerHTML=`
+
+    mbPage.innerHTML = `
       <h1>Watch history</h1>
       <div class="grid">
         ${
@@ -1006,7 +960,7 @@
                   <img src="${esc(item.cover)}">
                   <div class="card-title">${esc(cleanTitle(item.title))}</div>
                   <div class="history-meta">
-                    Last watched: ${new Date(item.ts||0).toLocaleString()}
+                    Last watched: ${new Date(item.ts || 0).toLocaleString()}
                   </div>
                 </div>
               </a>
@@ -1017,33 +971,36 @@
     `;
   }
 
-  /* ROUTER */
+  /* ===================== ROUTER ===================== */
   function router(){
-    mbPage=document.getElementById("mb-page");
+    mbPage = document.getElementById("mb-page");
     if(!mbPage) return;
-    let h=location.hash||"#/home";
-    h=h.replace(/^#\//,"");
-    const parts=h.split("/");
 
-    if(!h || h==="home"){ pageHome(); return; }
-    if(parts[0]==="category"){ pageCategory(parts[1]||"Movie"); return; }
-    if(parts[0]==="detail"){ pageDetail(parts[1]); return; }
-    if(parts[0]==="watch"){
-      const id=parts[1];
-      let epId=null;
-      if(parts[2]==="ep") epId=parts[3]||null;
+    let h = location.hash || "#/home";
+    h = h.replace(/^#\//,"");
+    const parts = h.split("/");
+
+    if(!h || h === "home"){ pageHome(); return; }
+    if(parts[0] === "category"){ pageCategory(parts[1] || "Movie"); return; }
+    if(parts[0] === "detail"){ pageDetail(parts[1]); return; }
+    if(parts[0] === "watch"){
+      const id = parts[1];
+      let epId = null;
+      if(parts[2] === "ep") epId = parts[3] || null;
       pageWatch(id,epId); return;
     }
-    if(parts[0]==="search"){
-      const q=decodeURIComponent(parts.slice(1).join("/")||"");
+    if(parts[0] === "search"){
+      const q = decodeURIComponent(parts.slice(1).join("/") || "");
       pageSearch(q); return;
     }
-    if(parts[0]==="history"){ pageHistory(); return; }
+    if(parts[0] === "history"){ pageHistory(); return; }
+
     pageHome();
   }
 
+  /* INIT */
   layout();
-  mbPage=document.getElementById("mb-page");
+  mbPage = document.getElementById("mb-page");
   router();
   window.addEventListener("hashchange",router);
 })();
