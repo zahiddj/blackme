@@ -751,96 +751,109 @@
     if(!mbPage) return;
 
     if(!id){
-      mbPage.innerHTML = "<h2>Missing id</h2>";
-      return;
+        mbPage.innerHTML = "<h2>Missing id</h2>";
+        return;
     }
 
     setLoading();
 
-    apiGET(DETAIL_ENDPOINT,{subjectId:id},res=>{
-      const data = (res && res.data) || {};
-      const d = data.subject || (Array.isArray(data.items) && data.items[0]) || data || {};
+    // EXACT same structure as Python
+    apiGET(DETAIL_ENDPOINT, { subjectId:id }, function(res){
+        let d = {};
+        if(res && res.data){
+            if(res.data.subject){
+                d = res.data.subject;                 // SAME as Python
+            } else {
+                d = res.data;
+            }
+        }
 
-      const title = d.title || d.name || "Unknown Title";
-      const cover = (d.cover && d.cover.url) || d.coverUrl || "";
-      const desc = d.description || d.desc || "";
-      const country = d.countryName || d.country || "";
-      const release = d.releaseDate || d.release || "";
-      const genre = d.genre || (Array.isArray(d.genreList) ? d.genreList.join(", ") : "");
-      const imdbValue = d.imdbRatingValue || d.imdbScore || d.score || "";
-      const imdbCount = d.imdbRatingCount || d.scoreCount || d.ratingCount || d.voteCount || "";
-      const ratingText = imdbValue ? `${imdbValue} / 10 (${imdbCount || "N/A"} votes)` : "No rating yet";
+        // FIXED: extract exactly like Python code
+        const title       = d.title || "Unknown Title";
+        const cover       = (d.cover && d.cover.url) || d.coverUrl || "";
+        const desc        = d.description || d.desc || "";
+        const country     = d.countryName || d.country || "";
+        const release     = d.releaseDate || d.release || "";
+        const genre       = d.genre || (Array.isArray(d.genreList) ? d.genreList.join(", ") : "");
+        const imdbValue   = d.imdbRatingValue || "";
+        const imdbCount   = d.imdbRatingCount || "";
+        const detailPath  = d.detailPath || d.detail_path || "";
 
-      updateSEO({
-        title: title + " – Watch Online | BlackMeMovie",
-        description: desc || ("Watch "+title+" online in HD on BlackMeMovie."),
-        image: cover || "https://i.ibb.co/2hR2qcF/moviebox-cover.jpg",
-        url: location.href
-      });
+        updateSEO({
+            title: title + " – Watch Online | BlackMeMovie",
+            description: desc || ("Watch "+title+" online in HD."),
+            image: cover,
+            url: location.href
+        });
 
-      buildDetailSchema(d,cover);
+        buildDetailSchema(d, cover);
 
-      // recommendations
-      apiGET(DETAIL_REC_ENDPOINT,{subjectId:id,page:1,perPage:12},recRes=>{
-        const similar = pickItems(recRes);
+        // GET SIMILAR
+        apiGET(DETAIL_REC_ENDPOINT, { subjectId:id }, function(recRes){
+            const similar = pickItems(recRes);
 
-        mbPage.innerHTML = `
-          <div class="detail-layout">
-            <div class="detail-main">
-              <div class="detail-top">
-                <img src="${cover}" class="detail-poster">
-                <div class="detail-info">
-                  <div class="detail-title">${esc(title)}</div>
-                  <div class="detail-meta-line">
-                    <b>Genre:</b> ${esc(genre)} &nbsp; • &nbsp;
-                    <b>Country:</b> ${esc(country)} &nbsp; • &nbsp;
-                    <b>Release:</b> ${esc(release)}
-                  </div>
-                  <p class="detail-desc">${esc(desc)}</p>
-                  <div class="detail-buttons">
-                    <a href="#/watch/${id}" class="btn btn-watch-main">▶ Watch</a>
-                    <span class="btn-secondary btn-watch-app">In App</span>
-                  </div>
-                  <div style="margin-top:10px;font-size:12px;color:#aaa;">
-                    <b>IMDb / Rating:</b> ${esc(ratingText)}
-                  </div>
-                </div>
-              </div>
+            mbPage.innerHTML = `
+                <div class="detail-layout">
+                    <div class="detail-main">
+                        <div class="detail-top">
+                            <img src="${cover}" class="detail-poster">
+                            <div class="detail-info">
+                                <div class="detail-title">${esc(title)}</div>
 
-              <h2 style="margin-top:24px;">Similar</h2>
-              <div class="grid">
-                ${
-                  (similar || []).map(s=>{
-                    const c = s.cover && s.cover.url ? s.cover.url : (s.coverUrl || "");
-                    return `
-                      <a href="#/detail/${s.subjectId}">
-                        <div class="card">
-                          <img src="${c}">
-                          <div class="card-title">${getTitle(s)}</div>
+                                <div class="detail-meta-line">
+                                    <b>Genre:</b> ${esc(genre)} &nbsp; • &nbsp;
+                                    <b>Country:</b> ${esc(country)} &nbsp; • &nbsp;
+                                    <b>Release:</b> ${esc(release)}
+                                </div>
+
+                                <p class="detail-desc">${esc(desc)}</p>
+
+                                <div class="detail-buttons">
+                                    <a class="btn btn-watch-main" href="#/watch/${id}/${detailPath}">▶ Watch</a>
+                                    <span class="btn-secondary">In App</span>
+                                </div>
+
+                                <div style="margin-top:10px;color:#aaa;font-size:12px;">
+                                    <b>IMDb / Rating:</b>
+                                    ${imdbValue ? imdbValue+" / 10 ("+imdbCount+" votes)" : "No rating yet"}
+                                </div>
+                            </div>
                         </div>
-                      </a>
-                    `;
-                  }).join("")
-                }
-              </div>
-            </div>
 
-            <div class="detail-right">
-              <div class="rating-box">
-                <div class="rating-label">Rating</div>
-                <div class="rating-score-row">
-                  <span class="rating-star">★</span>
-                  <span class="rating-score">${esc(imdbValue || "–")}</span>
-                  <span class="rating-outof">/10</span>
+                        <h2 style="margin-top:24px;">Similar</h2>
+                        <div class="grid">
+                            ${
+                                (similar || []).map(s=>{
+                                    const c = s.cover && s.cover.url ? s.cover.url : s.coverUrl;
+                                    return `
+                                        <a href="#/detail/${s.subjectId}">
+                                            <div class="card">
+                                                <img src="${c}">
+                                                <div class="card-title">${getTitle(s)}</div>
+                                            </div>
+                                        </a>
+                                    `;
+                                }).join("")
+                            }
+                        </div>
+                    </div>
+
+                    <div class="detail-right">
+                        <div class="rating-box">
+                            <div class="rating-label">Rating</div>
+                            <div class="rating-score-row">
+                                <span class="rating-star">★</span>
+                                <span class="rating-score">${esc(imdbValue || "–")}</span>
+                                <span class="rating-outof">/10</span>
+                            </div>
+                            <div class="rating-votes">${esc(imdbCount ? imdbCount+" votes" : "No rating yet")}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="rating-votes">${esc(imdbCount ? imdbCount+" votes" : "No rating yet")}</div>
-              </div>
-            </div>
-          </div>
-        `;
-      });
+            `;
+        });
     });
-  }
+}
 
   /* ===================== WATCH (LokLok iframe, NO debug text) ===================== */
   function pageWatch(id, epId){
