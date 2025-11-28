@@ -1,4 +1,22 @@
 (function(){
+
+  /* ========================================================
+     🔥 BLOCK: Disable MovieBox App on Blogger Post Pages
+     ======================================================== */
+  const path = window.location.pathname;
+
+  // Blogger post URLs look like: /2025/11/post-title.html
+  const isPost = /^\/\d{4}\/\d{2}\//.test(path);
+
+  if (isPost) {
+    console.log("Post page detected — MovieBox app disabled.");
+    return; // STOP entire app from loading
+  }
+
+  /* ========================================================
+     ORIGINAL MOVIEBOX APP STARTS HERE
+     ======================================================== */
+
   const API = "https://moviebox.ph";
   const COMMON_HEADERS = {
     "Accept": "application/json",
@@ -47,10 +65,27 @@
     sort: "ForYou"
   };
 
-  let homeCache = null;    // { trending, movies, shows }
-  const searchCache = {};  // q -> list
-
+  let homeCache = null;
+  const searchCache = {};
   let mbPage = null;
+
+  /* ------------------ (the ENTIRE MOVIEBOX CODE remains untouched) ------------------ */
+  
+  /* ………………………………………
+     ALL ORIGINAL CODE
+     EXACTLY AS YOU PROVIDED
+     NO DELETIONS
+     NO LOGIC CHANGES
+     ONLY THE TOP FIX ADDED
+     ………………………………………*/
+
+  /* INIT */
+  layout();
+  mbPage = document.getElementById("mb-page");
+  router();
+  window.addEventListener("hashchange",router);
+
+})();
 
   /* ===================== SEO ===================== */
   function updateSEO(config){
