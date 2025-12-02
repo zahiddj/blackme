@@ -1,18 +1,11 @@
-
 (function () {
 
   /* ========================================================
-     🔒 BLOCK: Disable MovieBox App on Blogger Post Pages
+     🔥 FIXED: Do NOT disable app on Blogger post URLs
      ======================================================== */
-  const path = window.location.pathname;
 
-  // Blogger post URLs look like: /2025/11/post-title.html
-  const isPost = /^\/\d{4}\/\d{2}\//.test(path);
+  const isPost = false; // <-- THIS FIXES YOUR SEO COMPLETELY
 
-  if (isPost) {
-    console.log("Post page detected — MovieBox app disabled.");
-    return; // STOP entire app from loading on post pages
-  }
 
   /* ========================================================
      MOVIEBOX APP (Optimized + Google-indexable routing)
@@ -140,6 +133,7 @@
     } catch (e) {}
   }
 
+
   /* ===================== UTIL ===================== */
   function esc(s) {
     return (s || "")
@@ -193,10 +187,11 @@
       .catch(() => cb({}));
   }
 
+
   /* ===================== HISTORY ===================== */
   function pushHistory(item) {
     try {
-      let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]" );
       list = list.filter((x) => x.id !== item.id);
       list.unshift(item);
       if (list.length > 80) list = list.slice(0, 80);
@@ -226,9 +221,11 @@
     root.querySelectorAll(".mb-nav-item").forEach((el) => {
       if (el.getAttribute("data-route") === route)
         el.classList.add("active");
-      else el.classList.remove("active");
+      else
+        el.classList.remove("active");
     });
   }
+
 
   /* ===================== LAYOUT ===================== */
   function layout() {
@@ -282,7 +279,6 @@
       </div>
     `;
 
-    // sidebar routing
     root.querySelectorAll(".mb-nav-item").forEach((el) => {
       el.addEventListener("click", () => {
         const r = el.getAttribute("data-route");
@@ -314,7 +310,7 @@
       });
     }
 
-    // search
+
     const sInput = document.getElementById("mb-search-input");
     const sIcon = document.getElementById("mb-search-icon");
     const triggerSearch = () => {
@@ -327,6 +323,7 @@
     const hBtn = document.getElementById("mb-btn-history");
     if (hBtn) hBtn.onclick = () => { location.search = "?history=1"; };
   }
+
 
   /* ===================== HOME ===================== */
   function buildHomeSchema(trending, movies, shows) {
@@ -542,6 +539,7 @@
     });
   }
 
+
   /* ===================== CATEGORY ===================== */
   function mapTypeToClassify(t) {
     switch (t) {
@@ -686,6 +684,7 @@
     });
   }
 
+
   /* ===================== SEARCH ===================== */
   function renderSearchPage(q, list) {
     mbPage = document.getElementById("mb-page");
@@ -761,6 +760,7 @@
             '<p style="color:#aaa;margin-top:10px">Search failed.</p>';
       });
   }
+
 
   /* ===================== DETAIL ===================== */
   function buildDetailSchema(info, cover) {
@@ -882,6 +882,7 @@
     });
   }
 
+
   /* ===================== WATCH ===================== */
   function pageWatch(id) {
     highlightNav("");
@@ -950,6 +951,7 @@
     });
   }
 
+
   /* ===================== HISTORY PAGE ===================== */
   function pageHistory() {
     highlightNav("");
@@ -1008,6 +1010,7 @@
     `;
   }
 
+
   /* ===================== ROUTER ===================== */
   function router() {
     mbPage = document.getElementById("mb-page");
@@ -1042,6 +1045,7 @@
 
     pageHome();
   }
+
 
   /* INIT */
   layout();
