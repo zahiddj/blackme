@@ -1,11 +1,17 @@
 (function () {
 
   /* ========================================================
-     🔥 FIXED: Do NOT disable app on Blogger post URLs
+     🛑 STOP APP on SITEMAP PAGE
      ======================================================== */
+  if (window.location.pathname.includes("/p/sitemap")) {
+    console.log("Sitemap page — app disabled.");
+    return;
+  }
 
-  const isPost = false; // <-- THIS FIXES YOUR SEO COMPLETELY
-
+  /* ========================================================
+     🛑 DO NOT BLOCK ANY BLOGGER PAGE (SEO FIX)
+     ======================================================== */
+  const isPost = false;
 
   /* ========================================================
      MOVIEBOX APP (Optimized + Google-indexable routing)
@@ -133,14 +139,11 @@
     } catch (e) {}
   }
 
-
   /* ===================== UTIL ===================== */
   function esc(s) {
     return (s || "")
       .toString()
-      .replace(/[&<>"']/g, (m) => ({
-        "&": "&amp;","<": "&lt;",">": "&gt;",'"': "&quot;","'": "&#39;"
-      })[m]);
+      .replace(/[&<>"']/g, (m) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
   }
 
   function cleanTitle(raw) {
@@ -187,11 +190,10 @@
       .catch(() => cb({}));
   }
 
-
   /* ===================== HISTORY ===================== */
   function pushHistory(item) {
     try {
-      let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]" );
+      let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
       list = list.filter((x) => x.id !== item.id);
       list.unshift(item);
       if (list.length > 80) list = list.slice(0, 80);
@@ -210,8 +212,7 @@
   function setLoading() {
     mbPage = document.getElementById("mb-page");
     if (mbPage) {
-      mbPage.innerHTML =
-        '<div class="loader" style="margin:40px auto;"></div>';
+      mbPage.innerHTML = '<div class="loader" style="margin:40px auto;"></div>';
     }
   }
 
@@ -221,11 +222,9 @@
     root.querySelectorAll(".mb-nav-item").forEach((el) => {
       if (el.getAttribute("data-route") === route)
         el.classList.add("active");
-      else
-        el.classList.remove("active");
+      else el.classList.remove("active");
     });
   }
-
 
   /* ===================== LAYOUT ===================== */
   function layout() {
@@ -279,6 +278,7 @@
       </div>
     `;
 
+    // sidebar routing
     root.querySelectorAll(".mb-nav-item").forEach((el) => {
       el.addEventListener("click", () => {
         const r = el.getAttribute("data-route");
@@ -310,7 +310,7 @@
       });
     }
 
-
+    // search
     const sInput = document.getElementById("mb-search-input");
     const sIcon = document.getElementById("mb-search-icon");
     const triggerSearch = () => {
@@ -323,7 +323,6 @@
     const hBtn = document.getElementById("mb-btn-history");
     if (hBtn) hBtn.onclick = () => { location.search = "?history=1"; };
   }
-
 
   /* ===================== HOME ===================== */
   function buildHomeSchema(trending, movies, shows) {
@@ -456,10 +455,9 @@
         <div class="section-title">🔥 Trending</div>
         <div class="grid">
           ${
-            trending
-              .map((m) => {
-                const c = (m.cover && m.cover.url) || m.coverUrl || "";
-                return `
+            trending.map((m) => {
+              const c = (m.cover && m.cover.url) || m.coverUrl || "";
+              return `
                 <a href="?detail=${m.subjectId}">
                   <div class="card">
                     <img src="${c}" loading="lazy">
@@ -467,8 +465,7 @@
                   </div>
                 </a>
               `;
-              })
-              .join("") || ""
+            }).join("") || ""
           }
         </div>
       </div>
@@ -477,10 +474,9 @@
         <div class="section-title">🎞 Movies</div>
         <div class="grid">
           ${
-            movies
-              .map((m) => {
-                const c = (m.cover && m.cover.url) || m.coverUrl || "";
-                return `
+            movies.map((m) => {
+              const c = (m.cover && m.cover.url) || m.coverUrl || "";
+              return `
                 <a href="?detail=${m.subjectId}">
                   <div class="card">
                     <img src="${c}" loading="lazy">
@@ -488,8 +484,7 @@
                   </div>
                 </a>
               `;
-              })
-              .join("") || ""
+            }).join("") || ""
           }
         </div>
       </div>
@@ -498,10 +493,9 @@
         <div class="section-title">📺 TV Shows</div>
         <div class="grid">
           ${
-            shows
-              .map((m) => {
-                const c = (m.cover && m.cover.url) || m.coverUrl || "";
-                return `
+            shows.map((m) => {
+              const c = (m.cover && m.cover.url) || m.coverUrl || "";
+              return `
                 <a href="?detail=${m.subjectId}">
                   <div class="card">
                     <img src="${c}" loading="lazy">
@@ -509,8 +503,7 @@
                   </div>
                 </a>
               `;
-              })
-              .join("") || ""
+            }).join("") || ""
           }
         </div>
       </div>
@@ -538,7 +531,6 @@
       };
     });
   }
-
 
   /* ===================== CATEGORY ===================== */
   function mapTypeToClassify(t) {
@@ -667,10 +659,9 @@
     }, (res) => {
       const data = pickItems(res);
       grid.innerHTML =
-        data
-          .map((m) => {
-            const c = (m.cover && m.cover.url) || m.coverUrl || "";
-            return `
+        data.map((m) => {
+          const c = (m.cover && m.cover.url) || m.coverUrl || "";
+          return `
             <a href="?detail=${m.subjectId}">
               <div class="card">
                 <img src="${c}" loading="lazy">
@@ -678,12 +669,10 @@
               </div>
             </a>
           `;
-          })
-          .join("") ||
+        }).join("") ||
         "<p style='color:#aaa;font-size:13px'>No results.</p>";
     });
   }
-
 
   /* ===================== SEARCH ===================== */
   function renderSearchPage(q, list) {
@@ -694,10 +683,9 @@
       <h1>Search: ${esc(q)}</h1>
       <div class="grid">
         ${
-          list
-            .map((m) => {
-              const c = (m.cover && m.cover.url) || m.coverUrl || "";
-              return `
+          list.map((m) => {
+            const c = (m.cover && m.cover.url) || m.coverUrl || "";
+            return `
             <a href="?detail=${m.subjectId}">
               <div class="card">
                 <img src="${c}" loading="lazy">
@@ -705,8 +693,7 @@
               </div>
             </a>
           `;
-            })
-            .join("") ||
+          }).join("") ||
           "<p style='color:#aaa;margin-top:10px'>No results found.</p>"
         }
       </div>
@@ -761,7 +748,6 @@
       });
   }
 
-
   /* ===================== DETAIL ===================== */
   function buildDetailSchema(info, cover) {
     info = info || {};
@@ -782,7 +768,7 @@
       datePublished: info.releaseDate || info.year || "",
       genre:
         info.genre ||
-        (Array.isArray(info.genreList) ? info.genreList.join(", ") : ""),
+        (Array.isArray(info.genreList) ? info.genreList.join(", ") : "" ),
     };
 
     const rawScore = info.score || info.imdbRatingValue || info.imdbScore;
@@ -859,11 +845,10 @@
               <h2 class="section-title">Similar</h2>
               <div class="grid">
                 ${
-                  rec
-                    .map((m) => {
-                      const c = (m.cover && m.cover.url) || m.coverUrl || "";
-                      const t = m.title || "Unknown";
-                      return `
+                  rec.map((m) => {
+                    const c = (m.cover && m.cover.url) || m.coverUrl || "";
+                    const t = m.title || "Unknown";
+                    return `
                       <a href="?detail=${m.subjectId}">
                         <div class="card">
                           <img src="${c}" loading="lazy">
@@ -871,8 +856,7 @@
                         </div>
                       </a>
                     `;
-                    })
-                    .join("") || ""
+                  }).join("") || ""
                 }
               </div>
             </div>
@@ -881,7 +865,6 @@
       });
     });
   }
-
 
   /* ===================== WATCH ===================== */
   function pageWatch(id) {
@@ -951,7 +934,6 @@
     });
   }
 
-
   /* ===================== HISTORY PAGE ===================== */
   function pageHistory() {
     highlightNav("");
@@ -990,9 +972,8 @@
       <h1>Watch history</h1>
       <div class="grid">
         ${
-          list
-            .map((item) => {
-              return `
+          list.map((item) => {
+            return `
             <a href="?detail=${item.id}">
               <div class="card">
                 <img src="${esc(item.cover)}" loading="lazy">
@@ -1003,13 +984,11 @@
               </div>
             </a>
           `;
-            })
-            .join("") || ""
+          }).join("") || ""
         }
       </div>
     `;
   }
-
 
   /* ===================== ROUTER ===================== */
   function router() {
@@ -1046,10 +1025,8 @@
     pageHome();
   }
 
-
   /* INIT */
   layout();
-  mbPage = document.getElementById("mb-page");
   router();
 
   window.addEventListener("popstate", router);
