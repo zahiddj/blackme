@@ -232,19 +232,6 @@
     if (!root) return;
 
     root.innerHTML = `
-  <div class="header-search">
-              <div class="search-box">
-                <input id="mb-search-input" class="search-input" placeholder="Search movies / TV shows">
-                <span id="mb-search-icon" class="search-icon">🔍</span>
-              </div>
-            </div>
-
-            <div class="header-actions">
-              <button class="btn-header btn-download">⬇ Download App</button>
-              <button id="mb-btn-history" class="btn-header btn-history">⏱ History</button>
-            </div>
-          </div>
-
           <div class="container">
             <div id="mb-page" class="mb-page"></div>
           </div>
