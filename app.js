@@ -232,29 +232,7 @@
     if (!root) return;
 
     root.innerHTML = `
-      <div class="mb-shell">
-
-        <div class="mb-sidebar">
-          <div class="mb-nav-list">
-            <div class="mb-nav-item" data-route="?home=1"><span class="icon">🏠</span><span class="text">Home</span></div>
-            <div class="mb-nav-item" data-route="?category=TV"><span class="icon">📺</span><span class="text">TV Show</span></div>
-            <div class="mb-nav-item" data-route="?category=Movie"><span class="icon">🎬</span><span class="text">Movie</span></div>
-            <div class="mb-nav-item" data-route="?category=Animation"><span class="icon">🐻</span><span class="text">Animation</span></div>
-            <div class="mb-nav-item" data-route="?category=Sport"><span class="icon">🎮</span><span class="text">Sport Live</span></div>
-            <div class="mb-nav-item" data-route="?category=Novel"><span class="icon">📖</span><span class="text">Novel 🔥</span></div>
-            <div class="mb-nav-item" data-route="?category=MostWatched"><span class="icon">📊</span><span class="text">Most Watched</span></div>
-          </div>
-        </div>
-
-        <div class="mb-main-wrap">
-          <div class="header">
-            <div class="header-logo">
-              <div class="logo-burger">☰</div>
-              <div class="logo-icon">BM</div>
-              <div class="logo-text">BlackMeMovie</div>
-            </div>
-
-            <div class="header-search">
+  <div class="header-search">
               <div class="search-box">
                 <input id="mb-search-input" class="search-input" placeholder="Search movies / TV shows">
                 <span id="mb-search-icon" class="search-icon">🔍</span>
@@ -270,11 +248,6 @@
           <div class="container">
             <div id="mb-page" class="mb-page"></div>
           </div>
-
-          <div class="footer">
-            BlackMeMovie © 2025
-          </div>
-        </div>
       </div>
     `;
 
