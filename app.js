@@ -846,7 +846,7 @@
       if (!slug) slug = "movie-" + id;
 
       const loklokUrl =
-        "https://lok-lok.cc/spa/videoPlayPage/movies/" +
+        "https://filmboom.top/spa/videoPlayPage/movies/" +
         encodeURIComponent(slug) +
         "?id=" +
         encodeURIComponent(id) +
