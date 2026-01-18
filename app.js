@@ -1,110 +1,68 @@
 (function () {
 
   /* ========================================================
-     🛑 STOP APP on SITEMAP PAGE
+     STOP APP ON SITEMAP
      ======================================================== */
-  if (window.location.pathname.includes("/p/sitemap")) {
-    console.log("Sitemap page — app disabled.");
-    return;
-  }
+  if (location.pathname.includes("/p/sitemap")) return;
 
   /* ========================================================
      CONFIG
      ======================================================== */
-
-  const API = "https://moviebox.ph";
-
-  const COMMON_HEADERS = {
-    Accept: "application/json",
-    Referer: "https://moviebox.ph/",
-    "x-client-info": '{"timezone":"Asia/Dhaka"}',
-    "x-source": "web",
-    "x-platform": "web"
-  };
-
-  const HISTORY_KEY = "bm_watch_history";
+  const API = "https://h5-api.aoneroom.com/wefeed-h5api-bff";
   const PER_PAGE = 24;
+  const HISTORY_KEY = "bm_watch_history";
 
-  /* ========================================================
-     🔥 NEW BFF ENDPOINTS (AUTO FALLBACK)
-     ======================================================== */
-
-  const BFF_PATHS = [
-    "/moviebox-h5-bff",   // NEW
-    "/wefeed-h5-bff"      // OLD (fallback)
-  ];
-
-  function withBFF(path) {
-    return BFF_PATHS.map(p => p + path);
-  }
-
-  const ENDPOINTS = {
-    TRENDING: withBFF("/web/subject/trending"),
-    FILTER: withBFF("/web/filter"),
-    DETAIL: withBFF("/web/subject/detail"),
-    DETAIL_REC: withBFF("/web/subject/detail-rec"),
-    SEARCH: withBFF("/web/subject/search"),
+  const HEADERS = {
+    "Accept": "application/json",
+    "Content-Type": "application/json"
   };
-
-  /* ========================================================
-     API HELPERS (AUTO RETRY)
-     ======================================================== */
-
-  function apiGET(paths, params, cb, i = 0) {
-    if (!paths[i]) return cb({});
-    const qs = new URLSearchParams(params || {}).toString();
-    const url = API + paths[i] + (qs ? "?" + qs : "");
-
-    fetch(url, { headers: COMMON_HEADERS })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(cb)
-      .catch(() => apiGET(paths, params, cb, i + 1));
-  }
-
-  function apiPOST(paths, body, cb, i = 0) {
-    if (!paths[i]) return cb({});
-
-    fetch(API + paths[i], {
-      method: "POST",
-      headers: {
-        ...COMMON_HEADERS,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body || {}),
-    })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(cb)
-      .catch(() => apiPOST(paths, body, cb, i + 1));
-  }
 
   /* ========================================================
      UTILS
      ======================================================== */
-
   function esc(s) {
     return (s || "").toString().replace(/[&<>"']/g, m =>
       ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])
     );
   }
 
-  function pickItems(resp) {
-    if (!resp || !resp.data) return [];
-    return resp.data.items || resp.data.subjectList || resp.data.list || [];
+  function apiGET(path, params, cb) {
+    const url = API + path + (params ? "?" + new URLSearchParams(params) : "");
+    fetch(url, { headers: HEADERS })
+      .then(r => r.json())
+      .then(cb)
+      .catch(() => cb({}));
   }
 
-  function getTitle(m) {
-    return m.title || m.name || m.seriesName || m.videoTitle || "Unknown";
+  function apiPOST(path, body, cb) {
+    fetch(API + path, {
+      method: "POST",
+      headers: HEADERS,
+      body: JSON.stringify(body || {})
+    })
+      .then(r => r.json())
+      .then(cb)
+      .catch(() => cb({}));
+  }
+
+  function pickItems(res) {
+    return res?.data?.items || res?.data?.subjectList || [];
+  }
+
+  function setLoading() {
+    const el = document.getElementById("mb-page");
+    if (el) el.innerHTML = `<div class="loader" style="margin:40px auto"></div>`;
   }
 
   /* ========================================================
      HISTORY
      ======================================================== */
-
   function pushHistory(item) {
     let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
     list = list.filter(x => x.id !== item.id);
     list.unshift(item);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 80)));
+    if (list.length > 80) list = list.slice(0, 80);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
   }
 
   function readHistory() {
@@ -112,114 +70,86 @@
   }
 
   /* ========================================================
-     PAGE HELPERS
+     HOME (TRENDING)
      ======================================================== */
-
-  function setLoading() {
-    const el = document.getElementById("mb-page");
-    if (el) el.innerHTML = '<div class="loader" style="margin:40px auto;"></div>';
-  }
-
-  /* ========================================================
-     HOME PAGE
-     ======================================================== */
-
   function pageHome() {
     setLoading();
 
-    apiGET(ENDPOINTS.TRENDING, { page: 0, perPage: 18 }, trendRes => {
-      const trending = pickItems(trendRes);
+    apiGET("/subject/trending", { page: 0, perPage: 18 }, res => {
+      const list = pickItems(res);
+      const el = document.getElementById("mb-page");
 
-      apiPOST(ENDPOINTS.FILTER, {
-        tabId: 2,
-        classify: "Movie",
-        genre: "All",
-        year: "All",
-        sort: "ForYou",
-        page: 1,
-        perPage: 18
-      }, movieRes => {
-
-        apiPOST(ENDPOINTS.FILTER, {
-          tabId: 2,
-          classify: "TV",
-          genre: "All",
-          year: "All",
-          sort: "ForYou",
-          page: 1,
-          perPage: 18
-        }, tvRes => {
-
-          const movies = pickItems(movieRes);
-          const shows = pickItems(tvRes);
-          renderHome(trending, movies, shows);
-        });
-      });
+      el.innerHTML = `
+        <h2>🔥 Trending</h2>
+        <div class="grid">
+          ${list.map(m => `
+            <a href="?detail=${m.subjectId}">
+              <div class="card">
+                <img src="${m.cover?.url || m.coverUrl || ""}" loading="lazy">
+                <div class="card-title">${esc(m.title)}</div>
+              </div>
+            </a>
+          `).join("")}
+        </div>
+      `;
     });
   }
 
-  function renderHome(trending, movies, shows) {
-    const el = document.getElementById("mb-page");
-    if (!el) return;
+  /* ========================================================
+     SEARCH (FIXED)
+     ======================================================== */
+  function pageSearch(q) {
+    setLoading();
 
-    el.innerHTML = `
-      <h2>🔥 Trending</h2>
-      <div class="grid">
-        ${trending.map(m => `
-          <a href="?detail=${m.subjectId}">
-            <div class="card">
-              <img src="${m.cover?.url || m.coverUrl || ""}">
-              <div class="card-title">${esc(getTitle(m))}</div>
-            </div>
-          </a>
-        `).join("")}
-      </div>
+    apiPOST("/search", {
+      keyword: q,
+      page: 1,
+      perPage: PER_PAGE,
+      searchType: "SUBJECT"
+    }, res => {
 
-      <h2>🎞 Movies</h2>
-      <div class="grid">
-        ${movies.map(m => `
-          <a href="?detail=${m.subjectId}">
-            <div class="card">
-              <img src="${m.cover?.url || m.coverUrl || ""}">
-              <div class="card-title">${esc(getTitle(m))}</div>
-            </div>
-          </a>
-        `).join("")}
-      </div>
+      const list = pickItems(res);
+      const el = document.getElementById("mb-page");
 
-      <h2>📺 TV Shows</h2>
-      <div class="grid">
-        ${shows.map(m => `
-          <a href="?detail=${m.subjectId}">
-            <div class="card">
-              <img src="${m.cover?.url || m.coverUrl || ""}">
-              <div class="card-title">${esc(getTitle(m))}</div>
-            </div>
-          </a>
-        `).join("")}
-      </div>
-    `;
+      el.innerHTML = `
+        <h1>Search: ${esc(q)}</h1>
+        <div class="grid">
+          ${
+            list.length
+              ? list.map(m => `
+                <a href="?detail=${m.subjectId}">
+                  <div class="card">
+                    <img src="${m.cover?.url || m.coverUrl || ""}" loading="lazy">
+                    <div class="card-title">${esc(m.title)}</div>
+                  </div>
+                </a>
+              `).join("")
+              : "<p style='color:#aaa'>No results found.</p>"
+          }
+        </div>
+      `;
+    });
   }
 
   /* ========================================================
-     DETAIL PAGE
+     DETAIL
      ======================================================== */
-
   function pageDetail(id) {
     setLoading();
 
-    apiGET(ENDPOINTS.DETAIL, { subjectId: id }, res => {
+    apiGET("/subject/detail", { subjectId: id }, res => {
       const d = res?.data?.subject || {};
       const cover = d.cover?.url || d.coverUrl || "";
 
-      apiGET(ENDPOINTS.DETAIL_REC, { subjectId: id, page: 1, perPage: 12 }, recRes => {
+      apiGET("/subject/detail-rec", { subjectId: id, page: 1, perPage: 12 }, recRes => {
         const rec = pickItems(recRes);
         const el = document.getElementById("mb-page");
 
         el.innerHTML = `
           <h1>${esc(d.title)}</h1>
-          <img src="${cover}" style="max-width:200px">
+          <img src="${cover}" style="max-width:180px">
           <p>${esc(d.description || "")}</p>
+
           <a class="btn" href="?watch=${id}">▶ Watch</a>
 
           <h3>Similar</h3>
@@ -227,8 +157,8 @@
             ${rec.map(m => `
               <a href="?detail=${m.subjectId}">
                 <div class="card">
-                  <img src="${m.cover?.url || m.coverUrl || ""}">
-                  <div class="card-title">${esc(getTitle(m))}</div>
+                  <img src="${m.cover?.url || m.coverUrl || ""}" loading="lazy">
+                  <div class="card-title">${esc(m.title)}</div>
                 </div>
               </a>
             `).join("")}
@@ -239,71 +169,43 @@
   }
 
   /* ========================================================
-     WATCH PAGE
+     WATCH
      ======================================================== */
-
   function pageWatch(id) {
     setLoading();
 
-    apiGET(ENDPOINTS.DETAIL, { subjectId: id }, res => {
+    apiGET("/subject/detail", { subjectId: id }, res => {
       const d = res?.data?.subject || {};
-      const title = d.title || "Unknown";
+      const slug = (d.detailPath || "").split("/").pop() || ("movie-" + id);
 
       pushHistory({
         id,
-        title,
+        title: d.title,
         cover: d.cover?.url || d.coverUrl || "",
         ts: Date.now()
       });
 
-      const slug = (d.detailPath || "").split("/").pop() || ("movie-" + id);
       const iframeUrl =
         "https://filmboom.top/spa/videoPlayPage/movies/" +
         encodeURIComponent(slug) +
-        "?id=" + id;
+        "?id=" + encodeURIComponent(id);
 
       document.getElementById("mb-page").innerHTML = `
-        <h1>Watching: ${esc(title)}</h1>
-        <iframe src="${iframeUrl}" allowfullscreen style="width:100%;height:520px;border:0"></iframe>
+        <h1>Watching: ${esc(d.title)}</h1>
+        <iframe
+          src="${iframeUrl}"
+          allowfullscreen
+          style="width:100%;height:520px;border:0">
+        </iframe>
+        <br><br>
+        <a href="?detail=${id}">⬅ Back</a>
       `;
     });
   }
 
   /* ========================================================
-     SEARCH
+     HISTORY PAGE
      ======================================================== */
-
-  function pageSearch(q) {
-    setLoading();
-
-    apiPOST(ENDPOINTS.SEARCH, {
-      keyword: q,
-      page: 1,
-      perPage: PER_PAGE
-    }, res => {
-      const list = pickItems(res);
-      const el = document.getElementById("mb-page");
-
-      el.innerHTML = `
-        <h1>Search: ${esc(q)}</h1>
-        <div class="grid">
-          ${list.map(m => `
-            <a href="?detail=${m.subjectId}">
-              <div class="card">
-                <img src="${m.cover?.url || m.coverUrl || ""}">
-                <div class="card-title">${esc(getTitle(m))}</div>
-              </div>
-            </a>
-          `).join("")}
-        </div>
-      `;
-    });
-  }
-
-  /* ========================================================
-     HISTORY
-     ======================================================== */
-
   function pageHistory() {
     const list = readHistory();
     const el = document.getElementById("mb-page");
@@ -314,7 +216,7 @@
         ${list.map(m => `
           <a href="?detail=${m.id}">
             <div class="card">
-              <img src="${m.cover}">
+              <img src="${m.cover}" loading="lazy">
               <div class="card-title">${esc(m.title)}</div>
             </div>
           </a>
@@ -326,7 +228,6 @@
   /* ========================================================
      ROUTER
      ======================================================== */
-
   function router() {
     const p = new URLSearchParams(location.search);
 
